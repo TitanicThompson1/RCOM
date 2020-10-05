@@ -4,7 +4,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <strings.h>
+#include <string.h>
+#include <unistd.h>
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
@@ -18,16 +22,17 @@ int main(int argc, char** argv)
 {
     int fd,c, res;
     struct termios oldtio,newtio;
-    char buf[255];
+    char buf[255], phrase[255];
     int i, sum = 0, speed = 0;
     
+    /*
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
     }
-
+   */
 
   /*
     Open serial port device for reading and writing and not as controlling tty
@@ -52,7 +57,7 @@ int main(int argc, char** argv)
     newtio.c_lflag = 0;
 
     newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
+    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
 
 
@@ -70,26 +75,28 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-
-
-    for (i = 0; i < 255; i++) {
-      buf[i] = 'a';
+    if(gets(buf) == NULL){
+      perror("Function gets");
+      exit(-1);
     }
-    
-    /*testing*/
-    buf[25] = '\n';
-    
-    res = write(fd,buf,255);   
+
+
+    res = write(fd,buf,strlen(buf) + 1);   
     printf("%d bytes written\n", res);
- 
 
-  /* 
-    O ciclo FOR e as instrucoes seguintes devem ser alterados de modo a respeitar 
-    o indicado no guiao 
-  */
+    //Este sleep serve para dar tempo para os dados serem transferidos. Ao fazer set dos atributos, vai voltar à predifinição e a comunicação vai acabar. Se houvesse mais bytes para escrever, seriam ignorados 
+    sleep(1);
 
-
-
+    int j = 0;
+    while (STOP==FALSE) {                 /* loop for input */
+      res = read(fd, buf, 1);               /* returns after 1 chars have been input */
+      buf[res] = 0;                       /* so we can printf... */
+      phrase[j++] = buf[0];
+      printf(":%s:%d\n", buf, res);
+      if (buf[0]=='\0') STOP=TRUE;
+    }
+    phrase[j] = '\0';
+    printf("%s\n",phrase);
    
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
