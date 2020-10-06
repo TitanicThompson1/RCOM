@@ -14,19 +14,22 @@
 #define TRUE 1
 #define FLAG 0x7E
 #define A 0x01
+#define C_SET 0x03
 #define C_UA 0x07
-#define BCC1 A^C
+#define BCC1_SET A^C_SET
+#define BCC1_UA A^C_UA
 
 volatile int STOP=FALSE;
 
-void ReceiveCommand(int fd, char received_command);
+int ReceiveCommand(int fd, char *received_command);
 int ReadOneByte(int fd, char command[], int pos);
+void UAReply(int fd, char *ua_reply);
 
 int main(int argc, char** argv)
 {
     int fd,c, res;
     struct termios oldtio,newtio;
-    char received_command[255], ua_command[255];
+    char received_command[255], ua_reply[255];
     /*
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
@@ -69,6 +72,13 @@ int main(int argc, char** argv)
     leitura do(s) proximo(s) caracter(es)
   */
 
+    /*Adicionei a chamada
+    * à função aqui*/
+    int set_msg_received = ReceiveCommand(fd, received_command);
+    if(set_msg_received == 0){
+      UA_Reply(fd, ua_reply);
+    }
+
     tcflush(fd, TCIOFLUSH);
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
@@ -86,32 +96,49 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void ReceiveCommand(int fd, char *received_command){
+int ReceiveCommand(int fd, char *received_command){
     int pos = 0;
-    char A_temp;
-    char C_temp;
     int new_pos = ReadOneByte(fd, received_command, pos);
     
     int not_done = 0;       
     while(not_done){
         
-        if(strcmp(received_command[pos], FLAG) != 0)
-            continue;
-        
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
-
-        if(strcmp(received_command[new_pos], A) != 0)
-            continue;
-        
-
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
-
-        if(strcmp(received_command[new_pos], C) != 0){
-
+        if(strcmp(received_command[pos], FLAG) != 0){
+          continue;
         }
+        
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(strcmp(received_command[new_pos], A) != 0){
+          continue;
+        }
+        
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(strcmp(received_command[new_pos], C_SET) != 0){
+          continue;
+        }
+
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(strcmp(received_command[new_pos], BCC1_SET) != 0){
+          continue;
+        }
+
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(strcmp(received_command[pos], FLAG) != 0){
+          continue;
+        }
+
+        not_done = 1;
     }
+
+  return 0;
     
 }
 
@@ -124,9 +151,25 @@ int ReadOneByte(int fd, char command[], int pos){
     int res, j;
     char buf[1];
            
-    res = read(fd, buf, 1);
-    //TODO: ERROR TRATEMENT               
+    if(read(fd, buf, 1) == -1){
+      perror("ReadOneByte");
+      exit(-1);
+    }
+                 
     command[pos++] = buf[0];
         
     return pos;
+}
+
+void UA_Reply(int fd, char* ua_reply){
+    int res;
+
+    ua_reply[0] = FLAG;
+    ua_reply[1] = A;
+    ua_reply[2] = C_UA;
+    ua_reply[3] = BCC1_UA;
+    ua_reply[4] = FLAG;
+
+    res = write(fd,ua_reply, 5);   
+    printf("%d bytes written\n", res);
 }
