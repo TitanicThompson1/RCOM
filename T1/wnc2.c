@@ -19,15 +19,18 @@
 #define A 0x03
 #define C_SET 0x03
 #define C_UA 0x07
-#define BCC1 A^C_SET
-
+#define BCC1_SET A^C_SET
+#define BCC1_UA A^C_UA
 volatile int STOP=FALSE;
+
+int ReceiveCommand(int fd, char *received_command);
+int ReadOneByte(int fd, char command[], int pos);
 
 int main(int argc, char** argv)
 {
     int fd,c, res;
     struct termios oldtio,newtio;
-    char set_command[255];
+    char set_command[255], received_command[8];
     int i, sum = 0, speed = 0;
     
     /*
@@ -80,29 +83,98 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-    if(gets(set_command) == NULL){
-      perror("Function gets");
-      exit(-1);
-    }
 
     set_command[0] = FLAG;
     set_command[1] = A;
     set_command[2] = C_SET;
-    set_command[3] = BCC1;
+    set_command[3] = BCC1_SET;
     set_command[4] = FLAG;
 
     res = write(fd,set_command, 5);   
     printf("%d bytes written\n", res);
 
    
-    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+    if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);
     }
 
+    int set_msg_received = ReceiveCommand(fd, received_command);
+    printf("Message received!\n");
 
-
+    if(set_msg_received == 0){
+      printf("%s\n", received_command);
+    }
 
     close(fd);
     return 0;
+}
+
+int ReceiveCommand(int fd, char *received_command){
+    int pos = 0;
+    int new_pos = ReadOneByte(fd, received_command, pos);
+    
+    int not_done = 1;       
+    while(not_done){
+        
+        if(received_command[pos] != FLAG){
+          continue;
+        }
+        printf("Flag read\n");
+        
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(received_command[pos] != A){
+          continue;
+        }
+        printf("A read\n");
+        
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(received_command[pos] != C_UA){
+          continue;
+        }
+
+        printf("C read\n");
+
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(received_command[pos] != BCC1_UA){
+          continue;
+        }
+
+        printf("BCC1 read\n");
+
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(received_command[pos] != FLAG){
+          continue;
+        }
+
+        printf("Flag read\n");
+
+        not_done = 0;
+    }
+
+  return 0;
+    
+}
+
+
+int ReadOneByte(int fd, char command[], int pos){
+    int res, j;
+    char buf[1];
+           
+    if(read(fd, buf, 1) == -1){
+      perror("ReadOneByte");
+      exit(-1);
+    }
+                 
+    command[pos++] = buf[0];
+        
+    return pos;
 }

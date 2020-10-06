@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 {
     int fd,c, res;
     struct termios oldtio,newtio;
-    char received_command[255], ua_reply[255];
+    char received_command[8], ua_reply[8];
     /*
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
@@ -72,13 +72,7 @@ int main(int argc, char** argv)
     leitura do(s) proximo(s) caracter(es)
   */
 
-    /*Adicionei a chamada
-    * à função aqui*/
-    int set_msg_received = ReceiveCommand(fd, received_command);
-    if(set_msg_received == 0){
-      UA_Reply(fd, ua_reply);
-    }
-
+    
     tcflush(fd, TCIOFLUSH);
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
@@ -89,6 +83,14 @@ int main(int argc, char** argv)
     printf("New termios structure set\n");
 
     
+    int set_msg_received = ReceiveCommand(fd, received_command);
+    printf("Message received!\n");
+    
+    if(set_msg_received == 0){
+      UA_Reply(fd, ua_reply);
+      printf("Message sent!\n");
+    }
+
 
 
     tcsetattr(fd,TCSANOW,&oldtio);
@@ -100,42 +102,53 @@ int ReceiveCommand(int fd, char *received_command){
     int pos = 0;
     int new_pos = ReadOneByte(fd, received_command, pos);
     
-    int not_done = 0;       
+    int not_done = 1;       
     while(not_done){
-        
-        if(strcmp(received_command[pos], FLAG) != 0){
-          continue;
-        }
-        
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
+        pos = 0;
 
-        if(strcmp(received_command[new_pos], A) != 0){
+        if(received_command[pos] != FLAG){
           continue;
         }
+
+        printf("Flag read\n");
         
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
-        if(strcmp(received_command[new_pos], C_SET) != 0){
+        if(received_command[pos] != A){
           continue;
         }
+
+        printf("A read\n");
+        
+        pos = new_pos;
+        new_pos = ReadOneByte(fd, received_command, pos);
+
+        if(received_command[pos] != C_SET){
+          continue;
+        }
+
+        printf("C read\n");
 
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
-        if(strcmp(received_command[new_pos], BCC1_SET) != 0){
+        if(received_command[pos] != BCC1_SET){
           continue;
         }
+
+        printf("BCC1 read\n");
 
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
-        if(strcmp(received_command[pos], FLAG) != 0){
+        if(received_command[pos] != FLAG){
           continue;
         }
 
-        not_done = 1;
+        printf("Flag read\n");
+
+        not_done = 0;
     }
 
   return 0;
