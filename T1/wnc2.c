@@ -9,28 +9,27 @@
 #include <strings.h>
 #include <string.h>
 #include <unistd.h>
+#include "message_types.h"
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
-#define FLAG 0x7E
-#define A 0x03
-#define C_SET 0x03
-#define C_UA 0x07
-#define BCC1_SET A^C_SET
-#define BCC1_UA A^C_UA
+
 volatile int STOP=FALSE;
 
-int ReceiveCommand(int fd, char *received_command);
-int ReadOneByte(int fd, char command[], int pos);
+
+
+
+int ReceiveCommand(int fd, byte *received_command);
+int ReadOneByte(int fd, byte command[], int pos);
 
 int main(int argc, char** argv)
 {
     int fd,c, res;
     struct termios oldtio,newtio;
-    char set_command[255], received_command[8];
+    byte set_command[8], received_command[8];
     int i, sum = 0, speed = 0;
     
     /*
@@ -94,10 +93,7 @@ int main(int argc, char** argv)
     printf("%d bytes written\n", res);
 
    
-    if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-      perror("tcsetattr");
-      exit(-1);
-    }
+    sleep(1);
 
     int set_msg_received = ReceiveCommand(fd, received_command);
     printf("Message received!\n");
@@ -105,76 +101,89 @@ int main(int argc, char** argv)
     if(set_msg_received == 0){
       printf("%s\n", received_command);
     }
+    
+
+    if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+      perror("tcsetattr");
+      exit(-1);
+    }
 
     close(fd);
     return 0;
 }
 
-int ReceiveCommand(int fd, char *received_command){
+int ReceiveCommand(int fd, byte *received_command){
     int pos = 0;
+    printf("Hello1\n");
     int new_pos = ReadOneByte(fd, received_command, pos);
-    
-    int not_done = 1;       
+    printf("Hello2\n");
+    int not_done = 1;  
     while(not_done){
+        pos = 0;
         
         if(received_command[pos] != FLAG){
+          printf("Error in reading FLAG: %x\n", received_command[pos]);
           continue;
         }
-        printf("Flag read\n");
+        printf("Flag read: %x\n", received_command[pos]);
         
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != A){
+          printf("Error in reading A: %x\n", received_command[pos]);
           continue;
         }
-        printf("A read\n");
+        printf("A read: %x\n", received_command[pos]);
         
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != C_UA){
+          printf("Error in reading C_UA: %x\n", received_command[pos]);
+
           continue;
         }
 
-        printf("C read\n");
+        printf("C read: %x\n", received_command[pos]);
 
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
-        if(received_command[pos] != BCC1_UA){
+        //TODO: Perguntar ao prof
+        byte bcc1 = BCC1_UA;
+        if(received_command[pos] != bcc1){
+          printf("Error in reading BCC1_UA: %x", received_command[pos]);
           continue;
         }
 
-        printf("BCC1 read\n");
+        printf("BCC1 read: %x\n", received_command[pos]);
 
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != FLAG){
+          printf("Error in reading FLAG: %x\n", received_command[pos]); 
           continue;
         }
 
-        printf("Flag read\n");
+        printf("Flag read: %x\n", received_command[pos]);
 
         not_done = 0;
     }
-
   return 0;
     
 }
 
 
-int ReadOneByte(int fd, char command[], int pos){
-    int res, j;
-    char buf[1];
+int ReadOneByte(int fd, byte command[], int pos){
+    byte buf[1];
            
     if(read(fd, buf, 1) == -1){
-      perror("ReadOneByte");
-      exit(-1);
-    }
-                 
+      printf("ReadOneByte\n");
+      exit(-1); 
+    }            
     command[pos++] = buf[0];
-        
+    //printf("%x\n",command[pos]);
     return pos;
 }

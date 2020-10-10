@@ -7,29 +7,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "message_types.h"
 
 #define BAUDRATE B38400
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
+#define _POSIX_SOURCE 1 /* POSIX compliant source */E
 #define FALSE 0
 #define TRUE 1
-#define FLAG 0x7E
-#define A 0x01
-#define C_SET 0x03
-#define C_UA 0x07
-#define BCC1_SET A^C_SET
-#define BCC1_UA A^C_UA
+
+
 
 volatile int STOP=FALSE;
 
-int ReceiveCommand(int fd, char *received_command);
-int ReadOneByte(int fd, char command[], int pos);
-void UAReply(int fd, char *ua_reply);
+int ReceiveCommand(int fd, byte *received_command);
+int ReadOneByte(int fd, byte command[], int pos);
+void UA_Reply(int fd, byte* ua_reply);
 
 int main(int argc, char** argv)
 {
-    int fd,c, res;
+    int fd;
     struct termios oldtio,newtio;
-    char received_command[8], ua_reply[8];
+    byte received_command[8], ua_reply[8];
     /*
     if ( (argc < 2) || 
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
@@ -65,8 +62,6 @@ int main(int argc, char** argv)
     newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
     newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
-
-
   /* 
     VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
     leitura do(s) proximo(s) caracter(es)
@@ -82,10 +77,12 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-    
     int set_msg_received = ReceiveCommand(fd, received_command);
     printf("Message received!\n");
     
+    //tcflush(fd, TCIOFLUSH);
+
+
     if(set_msg_received == 0){
       UA_Reply(fd, ua_reply);
       printf("Message sent!\n");
@@ -98,7 +95,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-int ReceiveCommand(int fd, char *received_command){
+int ReceiveCommand(int fd, byte *received_command){
     int pos = 0;
     int new_pos = ReadOneByte(fd, received_command, pos);
     
@@ -107,46 +104,53 @@ int ReceiveCommand(int fd, char *received_command){
         pos = 0;
 
         if(received_command[pos] != FLAG){
+          printf("Error in reading FLAG: %x\n", received_command[pos]);
           continue;
         }
 
-        printf("Flag read\n");
+        printf("Flag read: %x\n", received_command[pos]);
         
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != A){
+          printf("Error in reading A: %x\n", received_command[pos]);
           continue;
         }
 
-        printf("A read\n");
+        printf("A read: %x\n", received_command[pos]);
         
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != C_SET){
+          printf("Error in reading C_SET: %x\n", received_command[pos]);
           continue;
         }
 
-        printf("C read\n");
+        printf("C read: %x\n", received_command[pos]);
 
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
-        if(received_command[pos] != BCC1_SET){
+        //TODO: Perguntar ao prof
+        byte bcc1 = BCC1_SET;
+        if(received_command[pos] != bcc1){
+          printf("Error in reading BCC1_SET: %x. Expetected %x\n", received_command[pos], BCC1_SET);
           continue;
         }
 
-        printf("BCC1 read\n");
+        printf("BCC1 read: %x\n", received_command[pos]);
 
         pos = new_pos;
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != FLAG){
+          printf("Error in reading FLAG: %x\n", received_command[pos]);
           continue;
         }
 
-        printf("Flag read\n");
+        printf("Flag read: %x\n", received_command[pos]);
 
         not_done = 0;
     }
@@ -160,9 +164,9 @@ int ReceiveCommand(int fd, char *received_command){
  * writes it in the command in position pos.
  * Returns the new value for pos
 */
-int ReadOneByte(int fd, char command[], int pos){
-    int res, j;
-    char buf[1];
+int ReadOneByte(int fd, byte command[], int pos){
+    int res;
+    byte buf[1];
            
     if(read(fd, buf, 1) == -1){
       perror("ReadOneByte");
@@ -174,7 +178,7 @@ int ReadOneByte(int fd, char command[], int pos){
     return pos;
 }
 
-void UA_Reply(int fd, char* ua_reply){
+void UA_Reply(int fd, byte* ua_reply){
     int res;
 
     ua_reply[0] = FLAG;
@@ -183,6 +187,6 @@ void UA_Reply(int fd, char* ua_reply){
     ua_reply[3] = BCC1_UA;
     ua_reply[4] = FLAG;
 
-    res = write(fd,ua_reply, 5);   
+    res = write(fd, ua_reply, 5);   
     printf("%d bytes written\n", res);
 }
