@@ -9,6 +9,8 @@
 #include <strings.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+
 #include "message_types.h"
 
 #define BAUDRATE B38400
@@ -20,17 +22,25 @@
 volatile int STOP=FALSE;
 
 
+int timeout_flag = 0;
+int n_alarm = 0;
 
 
 int ReceiveCommand(int fd, byte *received_command);
 int ReadOneByte(int fd, byte command[], int pos);
+void send_command(int fd, byte* command);
+
+void count(){
+	timeout_flag=1;
+	n_alarm++;
+}
 
 int main(int argc, char** argv)
 {
-    int fd,c, res;
+    int fd;
     struct termios oldtio,newtio;
     byte set_command[8], received_command[8];
-    int i, sum = 0, speed = 0;
+    //int i, sum = 0, speed = 0;
     
     /*
     if ( (argc < 2) || 
@@ -63,7 +73,7 @@ int main(int argc, char** argv)
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
 
-    newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+    newtio.c_cc[VTIME]    = 30;   /* inter-character timer unused */
     newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
 
@@ -82,26 +92,29 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
+    while( n_alarm != 3){
 
-    set_command[0] = FLAG;
-    set_command[1] = A;
-    set_command[2] = C_SET;
-    set_command[3] = BCC1_SET;
-    set_command[4] = FLAG;
+      send_command(fd, set_command);
 
-    res = write(fd,set_command, 5);   
-    printf("%d bytes written\n", res);
+      sleep(1);
 
-   
-    sleep(1);
-
-    int set_msg_received = ReceiveCommand(fd, received_command);
-    printf("Message received!\n");
-
-    if(set_msg_received == 0){
-      printf("%s\n", received_command);
-    }
+      (void) signal(SIGALRM, count);
     
+      int set_msg_received = ReceiveCommand(fd, received_command);
+
+      if(set_msg_received == 0){
+
+        printf("Message received!\n");
+        printf("%s\n", received_command);
+        break;
+      }else{
+        printf("Error in reading. Repeating reading.\n");
+      }
+    }
+
+    if(n_alarm == 3){
+      printf("Repeated reading 3 times. Now ending\n");
+    }
 
     if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
@@ -114,16 +127,20 @@ int main(int argc, char** argv)
 
 int ReceiveCommand(int fd, byte *received_command){
     int pos = 0;
-    printf("Hello1\n");
     int new_pos = ReadOneByte(fd, received_command, pos);
-    printf("Hello2\n");
+    
+    if(new_pos == -1)
+      return -1;
+    
+
     int not_done = 1;  
-    while(not_done){
+    while(not_done || n_alarm == 3){
         pos = 0;
         
         if(received_command[pos] != FLAG){
           printf("Error in reading FLAG: %x\n", received_command[pos]);
-          continue;
+          n_alarm++;
+          return -1;
         }
         printf("Flag read: %x\n", received_command[pos]);
         
@@ -132,7 +149,8 @@ int ReceiveCommand(int fd, byte *received_command){
 
         if(received_command[pos] != A){
           printf("Error in reading A: %x\n", received_command[pos]);
-          continue;
+          n_alarm++;
+          return -1;
         }
         printf("A read: %x\n", received_command[pos]);
         
@@ -141,8 +159,8 @@ int ReceiveCommand(int fd, byte *received_command){
 
         if(received_command[pos] != C_UA){
           printf("Error in reading C_UA: %x\n", received_command[pos]);
-
-          continue;
+          n_alarm++;
+          return -1;
         }
 
         printf("C read: %x\n", received_command[pos]);
@@ -154,7 +172,8 @@ int ReceiveCommand(int fd, byte *received_command){
         byte bcc1 = BCC1_UA;
         if(received_command[pos] != bcc1){
           printf("Error in reading BCC1_UA: %x", received_command[pos]);
-          continue;
+          n_alarm++;
+          return -1;
         }
 
         printf("BCC1 read: %x\n", received_command[pos]);
@@ -163,14 +182,16 @@ int ReceiveCommand(int fd, byte *received_command){
         new_pos = ReadOneByte(fd, received_command, pos);
 
         if(received_command[pos] != FLAG){
-          printf("Error in reading FLAG: %x\n", received_command[pos]); 
-          continue;
+          printf("Error in reading FLAG: %x\n", received_command[pos]);
+          n_alarm++;
+          return -1;
         }
 
         printf("Flag read: %x\n", received_command[pos]);
 
         not_done = 0;
     }
+
   return 0;
     
 }
@@ -178,12 +199,33 @@ int ReceiveCommand(int fd, byte *received_command){
 
 int ReadOneByte(int fd, byte command[], int pos){
     byte buf[1];
-           
-    if(read(fd, buf, 1) == -1){
+    int n;
+
+    if((n = read(fd, buf, 1)) == -1){
       printf("ReadOneByte\n");
-      exit(-1); 
-    }            
+      exit(-1);
+    }
+
+    if(n==0){
+      n_alarm++;
+      return -1;
+    }
+
     command[pos++] = buf[0];
-    //printf("%x\n",command[pos]);
+
     return pos;
+}
+
+
+void send_command(int fd, byte* command){
+    int res;
+
+    command[0] = FLAG;
+    command[1] = A;
+    command[2] = C_SET;
+    command[3] = BCC1_SET;
+    command[4] = FLAG;
+
+    res = write(fd, command, 5);   
+    printf("%d bytes written\n", res);
 }
