@@ -110,7 +110,7 @@ int main(int argc, char** argv)
             printf("Error in reading. Repeating reading.\n");
         }
 */
-        send_I_command(fd, message);      
+        send_i_command(fd, message);      
 
     //}
 

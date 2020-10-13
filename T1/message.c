@@ -221,13 +221,6 @@ int ReadOneByte(int fd, byte *command){
     return 0;
 }
 
-void updateN(int *n){
-    if(n == 0)
-        n = 1;
-    else
-        n = 0;
-}
-
 int ReceiveDISC(int fd, byte *received_command){
 
     int current_state = STATE_START;
@@ -308,58 +301,6 @@ int ReceiveDISC(int fd, byte *received_command){
             }
         }
     }
-}
-
-void send_set_command(int fd, byte* command){
-    int res;
-
-    command[0] = FLAG;
-    command[1] = A;
-    command[2] = C_SET;
-    command[3] = BCC1(SET);
-    command[4] = FLAG;
-
-    res = write(fd, command, 5);
-    printf("%d bytes written\n", res);
-}
-
-void print_message(byte *message){
-    printf("%x %x %x %x %x\n", message[0], message[1], message[2], message[3], message[4]);
-}
-
-void send_I_command(int fd, char * msg){    
-    int res;
-    byte command[255];
-
-    command[0] = FLAG;
-    command[1] = A;
-    command[2] = C_I(Ns);
-    updateN(Ns);
-    command[3] = BCC1(SET);
-    
-    int i = 0;
-    for(i = 0; i < strlen(msg); i++){
-        command[i+4] = msg[i];
-    }
-
-    command[i+5] = FLAG;
-    command[i+6] = '\0';
-
-    res = write(fd, command, strlen(command));
-    printf("%d bytes written\n", res);
-}   
-
-void send_UA(int fd, byte* ua_reply){
-    int res;
-
-    ua_reply[0] = FLAG;
-    ua_reply[1] = A;
-    ua_reply[2] = C_UA;
-    ua_reply[3] = BCC1(C_UA);
-    ua_reply[4] = FLAG;
-
-    res = write(fd, ua_reply, 5);
-    printf("%d bytes written\n", res);
 }
 
 void ReceiveI(int fd, byte *received_command, char* message){
@@ -446,3 +387,66 @@ void ReceiveData(int fd, char *message){
     int i = 0;
     //TODO
 }
+
+void send_set_command(int fd){
+    int res;
+
+    byte command[5];
+    command[0] = FLAG;
+    command[1] = A;
+    command[2] = C_SET;
+    command[3] = BCC1(SET);
+    command[4] = FLAG;
+
+    res = write(fd, command, 5);
+    printf("%d bytes written\n", res);
+}
+
+void send_i_command(int fd, char *msg){    
+    int res;
+    byte command[255];
+
+    command[0] = FLAG;
+    command[1] = A;
+    command[2] = C_I(Ns);
+    updateN(Ns);
+    command[3] = BCC1(SET);
+    
+    int i = 0;
+    for(i = 0; i < strlen(msg); i++){
+        command[i+4] = msg[i];
+    }
+
+    command[i+5] = FLAG;
+    command[i+6] = '\0';
+
+    res = write(fd, command, strlen(command));
+    printf("%d bytes written\n", res);
+}   
+
+void send_ua_command(int fd){
+    int res;
+    byte ua_reply[5];
+
+    ua_reply[0] = FLAG;
+    ua_reply[1] = A;
+    ua_reply[2] = C_UA;
+    ua_reply[3] = BCC1(C_UA);
+    ua_reply[4] = FLAG;
+
+    res = write(fd, ua_reply, 5);
+    printf("%d bytes written\n", res);
+}
+
+void print_message(byte *message){
+    printf("%x %x %x %x %x\n", message[0], message[1], message[2], message[3], message[4]);
+}
+
+void updateN(int *n){
+    if(n == 0)
+        n = 1;
+    else
+        n = 0;
+}
+
+
