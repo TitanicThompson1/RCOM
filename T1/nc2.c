@@ -19,7 +19,7 @@
 volatile int STOP=FALSE;
 
 int ReceiveCommand(int fd, byte *received_command);
-int ReadOneByte(int fd, byte command[], int pos);
+void ReadOneByte(int fd, byte command[]);
 void UA_Reply(int fd, byte* ua_reply);
 
 int main(int argc, char** argv)
@@ -96,63 +96,82 @@ int main(int argc, char** argv)
 }
 
 int ReceiveCommand(int fd, byte *received_command){
-    int pos = 0;
-    int new_pos = ReadOneByte(fd, received_command, pos);
+    int current_state = STATE_START;
+    byte buf[1];
     
-    int not_done = 1;       
-    while(not_done){
-        pos = 0;
-
-        if(received_command[pos] != FLAG){
-          printf("Error in reading FLAG: %x\n", received_command[pos]);
-          continue;
-        }
-
-        printf("Flag read: %x\n", received_command[pos]);
         
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
+    while(current_state != STATE_STOP){
 
-        if(received_command[pos] != A){
-          printf("Error in reading A: %x\n", received_command[pos]);
-          continue;
-        }
+        ReadOneByte(fd, buf);
 
-        printf("A read: %x\n", received_command[pos]);
+        if(current_state == STATE_START){
+
+          if(buf[0] != FLAG){
+            printf("Error in reading FLAG: %x\n", buf[0]);
+            
+          }else{
+            printf("Flag read: %x\n", buf[0]);
+
+            current_state = STATE_FLAG;
+            received_command[FLAG1_POS] = buf[0];
+          }
+
+        }else if(current_state == STATE_FLAG){
+
+          if(buf[0] == FLAG){
+            printf("Received another flag\n");
+            
+          }else if(buf[0] == A){
+
+            printf("A read: %x\n", buf[0]);
+            current_state = STATE_A;
+            received_command[A_POS] = buf[0];
+          }else{
+            printf("Error in reading A. Received %x\n", buf[0]);
+            current_state = STATE_START;
+          }
         
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
+        }else if(current_state == STATE_A){                                 //State A
+          if(buf[0] == FLAG){
+            printf("Received another flag\n");
+            current_state = STATE_FLAG;
+            
+          }else if(buf[0] == C_SET){
 
-        if(received_command[pos] != C_SET){
-          printf("Error in reading C_SET: %x\n", received_command[pos]);
-          continue;
+            printf("C_SET read: %x\n", buf[0]);
+            current_state = STATE_C;
+            received_command[C_POS] = buf[0];
+          }else{
+            printf("Error in reading C. Received %x\n", buf[0]);
+            current_state = STATE_START;
+          }
+
+        }else if(current_state == STATE_C){
+          if(buf[0] == FLAG){
+            printf("Received another flag\n");
+            current_state = STATE_FLAG;
+            
+          }else if(buf[0] == BCC1_SET){
+
+            printf("BCC1 read: %x\n", buf[0]);
+            current_state = STATE_BCC1;
+            received_command[BCC1_POS] = buf[0];
+          }else{
+            printf("Error in reading BCC1_SET. Received %x\n", buf[0]);
+            current_state = STATE_START;
+          }
+        }else if(current_state == STATE_BCC1){
+
+          if(buf[0] == FLAG){
+            printf("Flag read: %x\n", buf[0]);
+            received_command[FLAG2_POS] = buf[0];
+            current_state = STATE_STOP;
+            
+          }else{
+            printf("Error in reading FLAG. Received %x\n", buf[0]);
+            current_state = STATE_START;
+          }
         }
-
-        printf("C read: %x\n", received_command[pos]);
-
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
-
-        //TODO: Perguntar ao prof
-        byte bcc1 = BCC1_SET;
-        if(received_command[pos] != bcc1){
-          printf("Error in reading BCC1_SET: %x. Expetected %x\n", received_command[pos], BCC1_SET);
-          continue;
-        }
-
-        printf("BCC1 read: %x\n", received_command[pos]);
-
-        pos = new_pos;
-        new_pos = ReadOneByte(fd, received_command, pos);
-
-        if(received_command[pos] != FLAG){
-          printf("Error in reading FLAG: %x\n", received_command[pos]);
-          continue;
-        }
-
-        printf("Flag read: %x\n", received_command[pos]);
-
-        not_done = 0;
     }
 
   return 0;
@@ -164,18 +183,13 @@ int ReceiveCommand(int fd, byte *received_command){
  * writes it in the command in position pos.
  * Returns the new value for pos
 */
-int ReadOneByte(int fd, byte command[], int pos){
-    int res;
-    byte buf[1];
-           
-    if(read(fd, buf, 1) == -1){
+void ReadOneByte(int fd, byte command[]){
+
+    if(read(fd, command, 1) == -1){
       perror("ReadOneByte");
       exit(-1);
     }
-                 
-    command[pos++] = buf[0];
-        
-    return pos;
+    
 }
 
 void UA_Reply(int fd, byte* ua_reply){
