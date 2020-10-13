@@ -27,18 +27,18 @@ int n_alarm = 0;
 
 
 int ReceiveCommand(int fd, byte *received_command);
-void ReadOneByte(int fd, byte command[]);
-void send_command(int fd, byte* command);
+int ReadOneByte(int fd, byte command[]);
+void send_set_command(int fd, byte* command);
 
 void count(){
-	timeout_flag=1;
+	timeout_flag = 1;
 	n_alarm++;
 }
 
 int main(int argc, char** argv)
 {
     int fd;
-    struct termios oldtio,newtio;
+    struct termios oldtio, newtio;
     byte set_command[8], received_command[8];
     //int i, sum = 0, speed = 0;
     
@@ -92,25 +92,28 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
+    signal(SIGALRM, count);
     while( n_alarm != 3){
 
-      send_command(fd, set_command);
+        send_set_command(fd, set_command);
+        alarm(3);
 
-      sleep(1);
+        sleep(1);
 
-      (void) signal(SIGALRM, count);
-    
-      int set_msg_received = ReceiveCommand(fd, received_command);
 
-      if(set_msg_received == 0){
 
-        printf("Message received!\n");
-        printf("%x\n", received_command[0]);
-        printf("%x\n", received_command[1]);
-        printf("%x\n", received_command[2]);
-        printf("%x\n", received_command[3]);
-        printf("%x\n", received_command[4]);
-        break;
+        int set_msg_received = ReceiveCommand(fd, received_command);
+
+        if(set_msg_received == 0){
+
+            printf("Message received!\n");
+            printf("%x\n", received_command[0]);
+            printf("%x\n", received_command[1]);
+            printf("%x\n", received_command[2]);
+            printf("%x\n", received_command[3]);
+            printf("%x\n", received_command[4]);
+            break;
+
       }else{
         printf("Error in reading. Repeating reading.\n");
       }
@@ -135,7 +138,10 @@ int ReceiveCommand(int fd, byte *received_command){
         
     while(current_state != STATE_STOP){
 
-        ReadOneByte(fd, buf);
+        if(ReadOneByte(fd, buf) == -1){
+            return -1;
+        }
+
 
         if(current_state == STATE_START){
 
@@ -206,23 +212,25 @@ int ReceiveCommand(int fd, byte *received_command){
           }
         }
     }
-
-
   return 0;
     
 }
 
-void ReadOneByte(int fd, byte command[]){
+int ReadOneByte(int fd, byte command[]){
 
     if(read(fd, command, 1) == -1){
       perror("ReadOneByte");
       exit(-1);
     }
-    
+    if(read == 0 || timeout_flag == 1){
+        timeout_flag = 0;
+        return -1;
+    }
+    return 0;
 }
 
 
-void send_command(int fd, byte* command){
+void send_set_command(int fd, byte* command){
     int res;
 
     command[0] = FLAG;
