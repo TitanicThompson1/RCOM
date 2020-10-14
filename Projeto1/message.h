@@ -1,5 +1,5 @@
-#ifndef MESSAGE_TYPES_H
-#define MESSAGE_TYPES_H
+#ifndef MESSAGE_H
+#define MESSAGE_H
 
 typedef unsigned char byte;
 

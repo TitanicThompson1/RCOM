@@ -92,6 +92,8 @@ int main(int argc, char** argv)
     printf("New termios structure set\n");
 
     signal(SIGALRM, count);
+
+    
     //while( n_alarm != 3){
 /*
         send_set_command(fd, set_command);

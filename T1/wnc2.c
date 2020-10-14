@@ -33,6 +33,7 @@ void send_set_command(int fd, byte* command);
 void count(){
 	timeout_flag = 1;
 	n_alarm++;
+  printf("Interruption!\n");
 }
 
 int main(int argc, char** argv)
@@ -93,19 +94,17 @@ int main(int argc, char** argv)
     printf("New termios structure set\n");
 
     signal(SIGALRM, count);
+    siginterrupt(SIGALRM, 1);
     while( n_alarm != 3){
 
-        send_set_command(fd, set_command);
+        //send_set_command(fd, set_command);
         alarm(3);
-
-        sleep(1);
-
 
 
         int set_msg_received = ReceiveCommand(fd, received_command);
 
         if(set_msg_received == 0){
-
+            n_alarm=0;
             printf("Message received!\n");
             printf("%x\n", received_command[0]);
             printf("%x\n", received_command[1]);
@@ -190,7 +189,7 @@ int ReceiveCommand(int fd, byte *received_command){
             printf("Received another flag\n");
             current_state = STATE_FLAG;
             
-          }else if(buf[0] == BCC1_UA){
+          }else if(buf[0] == BCC1(C_UA)){
 
             printf("BCC1_UA read: %x\n", buf[0]);
             current_state = STATE_BCC1;
@@ -219,13 +218,14 @@ int ReceiveCommand(int fd, byte *received_command){
 int ReadOneByte(int fd, byte command[]){
 
     if(read(fd, command, 1) == -1){
+      if( timeout_flag == 1){
+        timeout_flag = 0;
+        return -1;
+      }
       perror("ReadOneByte");
       exit(-1);
     }
-    if(read == 0 || timeout_flag == 1){
-        timeout_flag = 0;
-        return -1;
-    }
+    
     return 0;
 }
 
@@ -236,7 +236,7 @@ void send_set_command(int fd, byte* command){
     command[0] = FLAG;
     command[1] = A;
     command[2] = C_SET;
-    command[3] = BCC1_SET;
+    command[3] = BCC1(C_SET);
     command[4] = FLAG;
 
     res = write(fd, command, 5);   

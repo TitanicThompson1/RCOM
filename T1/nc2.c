@@ -151,7 +151,7 @@ int ReceiveCommand(int fd, byte *received_command){
             printf("Received another flag\n");
             current_state = STATE_FLAG;
             
-          }else if(buf[0] == BCC1_SET){
+          }else if(buf[0] == BCC1(C_SET)){
 
             printf("BCC1 read: %x\n", buf[0]);
             current_state = STATE_BCC1;
@@ -198,7 +198,7 @@ void UA_Reply(int fd, byte* ua_reply){
     ua_reply[0] = FLAG;
     ua_reply[1] = A;
     ua_reply[2] = C_UA;
-    ua_reply[3] = BCC1_UA;
+    ua_reply[3] = BCC1(C_UA);
     ua_reply[4] = FLAG;
 
     res = write(fd, ua_reply, 5);   
