@@ -15,7 +15,7 @@ typedef unsigned char byte;
 #define C_UA 0x07
 
 //RR command
-#define C_RR(x) (byte)(x << 7 | 0x05)
+#define C_RR(x) (byte)((x << 7) | 0x05)
 
 //DISC command
 #define C_DISC 0x0B
@@ -55,7 +55,7 @@ enum MessageType{
 /**
  * Receives a command of type MessageType, from file fd, and puts it in received_command array
  */
-int ReceiveCommand(int fd, byte *received_command, enum MessageType message);
+int ReceiveCommand(int fd, byte* received_command, enum MessageType message);
 
 /**
  * Receives the UA command, from file fd, and puts it in received_command array
@@ -75,10 +75,10 @@ int ReceiveDISC(int fd, byte *received_command);
 /**
  * Receives the DISC command, from file fd, and puts it in received_command array. The message is put in message
 */
-void ReceiveI(int fd, byte *received_command, char* message);
+void ReceiveI(int fd, byte *received_command);
 
 
-void ReceiveData(int fd, char *message);
+int ReceiveMessage(int fd, byte* received_command);
 
 /**
  * Reads one byte from file fd and puts it on command
@@ -94,7 +94,7 @@ void send_set_command(int fd);
 /**
  * Sends I command with message msg to file fd
  */
-void send_i_command(int fd, char * msg);
+void send_i_command(int fd, byte* msg);
 
 /**
  * Sends SET command to file fd
@@ -107,8 +107,13 @@ void send_ua_command(int fd);
 void print_message(byte *message);
 
 /**
- * Updates Ns or Nr
+ * Updates Ns and returns the current one
  */
-void updateN(int *n);
+int updateNs();
+
+/**
+ * Updates Nr and returns the current one
+ */
+int updateNr();
 
 #endif

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "message.h"
 
 #define BAUDRATE B38400
@@ -14,20 +15,14 @@
 #define FALSE 0
 #define TRUE 1
 
-int Ns = 0, Nr = 1;
-
 volatile int STOP=FALSE;
 
-int ReceiveCommand(int fd, byte *received_command, enum MessageType message);
-int ReadOneByte(int fd, byte command[]);
-void send_UA(int fd, byte* ua_reply);
-void ReceiveI(int fd, byte *received_command, char* message);
 
 int main(int argc, char** argv)
 {
     int fd;
     struct termios oldtio,newtio;
-    byte received_command[8], ua_reply[8];
+    byte received_command[255], ua_reply[8];
     /*
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -77,19 +72,11 @@ int main(int argc, char** argv)
     }
 
     printf("New termios structure set\n");
-    /*
-    int set_msg_received = ReceiveCommand(fd, received_command);
-    printf("Message received!\n");
+    enum MessageType type = I;
 
-    //tcflush(fd, TCIOFLUSH);
+    ReceiveCommand(fd, received_command, type);
 
-
-    if(set_msg_received == 0){
-        UA_Reply(fd, ua_reply);
-        printf("Message sent!\n");
-    }
-
-    */
+    print_message(received_command);
 
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);

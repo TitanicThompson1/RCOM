@@ -8,10 +8,11 @@
 
 #include "message.h"
 
-int Ns = 1, Nr = 0;
 
+int expectedNs = 0, expectedNr = 1;     //expected Ns by the receiver and expected Nr by the emitter
+int lastNs = 1, lastNr = 0;             //las Ns sent by emitter and last Nr sent by receiver
 
-int ReceiveCommand(int fd, byte *received_command, enum MessageType message){
+int ReceiveCommand(int fd, byte* received_command, enum MessageType message){
 
     switch (message)
     {
@@ -22,8 +23,8 @@ int ReceiveCommand(int fd, byte *received_command, enum MessageType message){
         break;
     
     case I:
-        char* message[255];
-        ReceiveI(fd, received_command, message);
+        
+        ReceiveI(fd, received_command);
         
         
         break;
@@ -182,12 +183,12 @@ int ReceiveRR(int fd, byte *received_command){
                 printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
-            }else if(buf[0] == BCC1(C_RR(Ns))){
+            }else if(buf[0] == BCC1(C_RR(expectedNr))){
 
                 printf("BCC1_UA read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
                 received_command[BCC1_POS] = buf[0];
-                updateN(&Ns);
+                updateNr();
 
             }else{
                 printf("Error in reading BCC1_UA. Received %x\n", buf[0]);
@@ -211,6 +212,11 @@ int ReceiveRR(int fd, byte *received_command){
 int ReadOneByte(int fd, byte *command){
 
     if(read(fd, command, 1) == -1){
+        //TODO
+        /*if( timeout_flag == 1){
+            timeout_flag = 0;
+            return -1;
+        }*/
         perror("ReadOneByte");
         exit(-1);
     }/*
@@ -279,7 +285,7 @@ int ReceiveDISC(int fd, byte *received_command){
                 printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
-            }else if(buf[0] == BCC1(C_RR(0))){
+            }else if(buf[0] == BCC1(C_RR())){
 
                 printf("BCC1_UA read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
@@ -303,7 +309,7 @@ int ReceiveDISC(int fd, byte *received_command){
     }
 }
 
-void ReceiveI(int fd, byte *received_command, char* message){
+int ReceiveI(int fd, byte *received_command){
     
     int current_state = STATE_START;
     byte buf[1];
@@ -346,46 +352,68 @@ void ReceiveI(int fd, byte *received_command, char* message){
                 printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
-            }else if(buf[0] == C_UA){
+            }else if(buf[0] == C_I(expectedNs)){
 
                 printf("C_UA read: %x\n", buf[0]);
                 current_state = STATE_C;
                 received_command[C_POS] = buf[0];
             }else{
-                printf("Error in reading C. Received %x\n", buf[0]);
+                printf("Error in reading C_. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
 
         }else if(current_state == STATE_C){
+
             if(buf[0] == FLAG){
                 printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
-            }else if(buf[0] == BCC1(C_RR(Ns))){
+            }else if(buf[0] == BCC1(C_I(expectedNs))){
 
-                printf("BCC1_UA read: %x\n", buf[0]);
-                current_state = STATE_BCC1;
+                printf("BCC1_I read: %x\n", buf[0]);
+                current_state = STATE_STOP;
                 received_command[BCC1_POS] = buf[0];
 
-                char message[255];
-                ReceiveData(fd, message);
+                
 
-                updateN(&Ns);
+                int ret = ReceiveMessage(fd, received_command);
+                if(ret == -1)
+                    return -1;
+                return 0;
 
             }else{
-                printf("Error in reading BCC1_UA. Received %x\n", buf[0]);
+                printf("Error in reading BCC1_I. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
-        }else if(current_state == STATE_BCC1){
-            
         }
     }
 }
 
-void ReceiveData(int fd, char *message){
-    char buf[1];
-    int i = 0;
-    //TODO
+int ReceiveMessage(int fd, byte* received_command){
+    byte buf[1]; buf[0] = 0x00;
+    int i = 0, currentPos = BCC1_POS + 1;
+    
+    byte currentXOR = received_command[BCC1_POS], previousByte;
+
+    ReadOneByte(fd,buf);
+    while(buf[0] != FLAG){
+        
+        
+        received_command[currentPos++] = buf[0];
+        if(previousByte != null)
+            currentXOR = currentXOR ^ previousByte;
+
+        previousByte = buf[0];
+        ReadOneByte(fd,buf)
+        
+
+    }
+    received_command[currentPos] = buf[0];
+
+    //After the cycle ends, the BCC2 is stored in previousByte
+    if(currentXOR != previousByte)
+        return -1;
+    return 0;
 }
 
 void send_set_command(int fd){
@@ -395,30 +423,33 @@ void send_set_command(int fd){
     command[0] = FLAG;
     command[1] = A;
     command[2] = C_SET;
-    command[3] = BCC1(SET);
+    command[3] = BCC1(C_SET);
     command[4] = FLAG;
 
     res = write(fd, command, 5);
     printf("%d bytes written\n", res);
 }
 
-void send_i_command(int fd, char *msg){    
+void send_i_command(int fd, byte *msg){    
     int res;
     byte command[255];
 
     command[0] = FLAG;
     command[1] = A;
-    command[2] = C_I(Ns);
-    updateN(Ns);
-    command[3] = BCC1(SET);
     
+    int currNs = updateNs();
+    command[2] = C_I(currNs);
+    command[3] = BCC1(command[2]);
+    
+    byte currentXOR = command[3];
+
     int i = 0;
     for(i = 0; i < strlen(msg); i++){
         command[i+4] = msg[i];
+        currentXOR = currentXOR ^ msg[i]
     }
-
+    command[i+4] = 
     command[i+5] = FLAG;
-    command[i+6] = '\0';
 
     res = write(fd, command, strlen(command));
     printf("%d bytes written\n", res);
@@ -439,14 +470,35 @@ void send_ua_command(int fd){
 }
 
 void print_message(byte *message){
-    printf("%x %x %x %x %x\n", message[0], message[1], message[2], message[3], message[4]);
+    printf("%x ",message[0]);
+    int i = 1;
+    while(message[i] != FLAG){
+        printf("%x ",message[i]);
+    }
+    printf("\n");
 }
 
-void updateN(int *n){
-    if(n == 0)
-        n = 1;
+int updateNs(){
+    int currentNs;
+    if(lastNs == 0)
+        currentNs = 1;
     else
-        n = 0;
+        currentNs = 0;
+    lastNs = currentNs;
+    expectedNs = currentNs;
+    return currentNs;
+}
+
+int updateNr(){
+    int currentNr;
+    if(lastNs == 0)
+        currentNr = 1;
+    else
+        currentNr = 0;
+    lastNr = currentNr;
+    expectedNr = currentNr;
+
+    return currentNr;
 }
 
 

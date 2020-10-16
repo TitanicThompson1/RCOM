@@ -77,6 +77,9 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
+
+    sleep(10);
+    
     int set_msg_received = ReceiveCommand(fd, received_command);
     printf("Message received!\n");
     

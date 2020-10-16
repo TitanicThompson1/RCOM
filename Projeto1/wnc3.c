@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     int fd;
     struct termios oldtio, newtio;
     byte set_command[8], received_command[8];
-    char *message= "Teste";
+    byte *message= "Teste";
     //int i, sum = 0, speed = 0;
 
     /*
@@ -92,33 +92,12 @@ int main(int argc, char** argv)
     printf("New termios structure set\n");
 
     signal(SIGALRM, count);
+    siginterrupt(SIGALRM, 1);
 
     
-    //while( n_alarm != 3){
-/*
-        send_set_command(fd, set_command);
-        //alarm(3);
+    send_i_command(fd, message);      
 
-        sleep(1);
-
-        int set_msg_received = ReceiveCommand(fd, received_command, UA);
-
-        if(set_msg_received == 0){
-
-            printf("Message received!\n");
-            print_message(received_command);
-            
-        }else{
-            printf("Error in reading. Repeating reading.\n");
-        }
-*/
-        send_i_command(fd, message);      
-
-    //}
-
-    if(n_alarm == 3){
-        printf("Repeated reading 3 times. Now ending\n");
-    }
+    sleep(1);
 
     if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
         perror("tcsetattr");
