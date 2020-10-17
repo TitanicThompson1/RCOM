@@ -37,8 +37,13 @@ int main(int argc, char** argv)
 {
     int fd;
     struct termios oldtio, newtio;
-    byte set_command[8], received_command[8];
-    byte *message= "Teste";
+    byte message[5];
+    message[0] = 0x01;
+    message[1] = 0x02;
+    message[2] = 0x03;
+    message[3] = 0x04;
+    message[4] = 0x05;
+
     //int i, sum = 0, speed = 0;
 
     /*
@@ -95,7 +100,7 @@ int main(int argc, char** argv)
     siginterrupt(SIGALRM, 1);
 
     
-    send_i_command(fd, message);      
+    send_i_command(fd, message, 5);      
 
     sleep(1);
 

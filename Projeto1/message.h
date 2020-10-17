@@ -1,6 +1,15 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
 typedef unsigned char byte;
 
 //Common message parts
@@ -53,56 +62,58 @@ enum MessageType{
 };
 
 /**
- * Receives a command of type MessageType, from file fd, and puts it in received_command array
+ * Receives a command of type MessageType, from file fd, and puts it in received_command array.
  */
 int ReceiveCommand(int fd, byte* received_command, enum MessageType message);
 
 /**
- * Receives the UA command, from file fd, and puts it in received_command array
+ * Receives the UA command, from file fd, and puts it in received_command array.
  */
 int ReceiveUA(int fd, byte *received_command);
 
 /**
- * Receives the RR command, from file fd, and puts it in received_command array
+ * Receives the RR command, from file fd, and puts it in received_command array.
  */
 int ReceiveRR(int fd, byte *received_command);
 
 /**
- * Receives the DISC command, from file fd, and puts it in received_command array
+ * Receives the DISC command, from file fd, and puts it in received_command array.
  */
 int ReceiveDISC(int fd, byte *received_command);
 
 /**
- * Receives the DISC command, from file fd, and puts it in received_command array. The message is put in message
+ * Receives the DISC command, from file fd, and puts it in received_command array. The message is put in message.
 */
-void ReceiveI(int fd, byte *received_command);
+int ReceiveI(int fd, byte *received_command);
 
-
+/**
+ * Receives the data part of I message, from file fd. It puts the message in the correct position in received_command array.
+*/
 int ReceiveMessage(int fd, byte* received_command);
 
 /**
- * Reads one byte from file fd and puts it on command
+ * Reads one byte from file fd and puts it on command.
  */
 int ReadOneByte(int fd, byte *command);
 
 
 /**
- * Sends SET command in array command to file fd
+ * Sends SET command in array command to file fd.
  */
 void send_set_command(int fd);
 
 /**
- * Sends I command with message msg to file fd
+ * Sends I command with message msg to file fd.
  */
-void send_i_command(int fd, byte* msg);
+void send_i_command(int fd, byte* msg, int n);
 
 /**
- * Sends SET command to file fd
+ * Sends UA command to file fd.
  */
 void send_ua_command(int fd);
 
 /**
- * Prints array message
+ * Prints array message that has the typical format of a message (with flag in the beginning and in the end)
  */
 void print_message(byte *message);
 
