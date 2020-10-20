@@ -274,7 +274,7 @@ int ReceiveMessage(int fd, byte* received_command){
     return 0;
 }
 
-void send_set_command(int fd){
+void send_set_message(int fd){
     int res;
 
     byte command[5];
@@ -288,7 +288,7 @@ void send_set_command(int fd){
     printf("%d bytes written\n", res);
 }
 
-void send_i_command(int fd, byte *msg, int n){    
+void send_i_message(int fd, byte *msg, int n){    
     int res;
     byte command[255];
 
@@ -332,7 +332,7 @@ void send_i_command(int fd, byte *msg, int n){
     print_message("I command",command);
 }
 
-void send_disc_command(int fd){
+void send_disc_message(int fd){
     int res;
     byte disc_reply[5];
 
@@ -347,7 +347,7 @@ void send_disc_command(int fd){
 
 }
 
-void send_ua_command(int fd){
+void send_ua_message(int fd){
     int res;
     byte ua_reply[5];
 
@@ -361,7 +361,7 @@ void send_ua_command(int fd){
     printf("%d bytes written\n", res);
 }
 
-void send_rr_command(int fd){
+void send_rr_message(int fd){
     int res;
     byte rr_reply[5];
 
@@ -376,7 +376,7 @@ void send_rr_command(int fd){
     printf("%d bytes written\n", res);
 }
 
-void send_rej_command(int fd){
+void send_rej_message(int fd){
     int res;
     byte rej_reply[5];
 

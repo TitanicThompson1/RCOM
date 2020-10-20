@@ -77,20 +77,20 @@ int main(int argc, char** argv)
     ReceiveI(fd, received_command);
     printf("Received command\n");
 
-    send_rr_command(fd);
+    send_rr_message(fd);
     printf("Sent RR\n");
 
     ReceiveI(fd, received_command);
     printf("Received command\n");
 
-    send_rr_command(fd);
+    send_rr_message(fd);
     printf("Sent RR\n");
 
 
     ReceiveI(fd, received_command);
     printf("Received command\n");
 
-    send_rr_command(fd);
+    send_rr_message(fd);
     printf("Sent RR\n");
 
     sleep(1);

@@ -92,32 +92,32 @@ int ReadOneByte(int fd, byte *command);
 /**
  * Sends SET command in array command to file fd.
  */
-void send_set_command(int fd);
+void send_set_message(int fd);
 
 /**
  * Sends I command with message msg to file fd.
  */
-void send_i_command(int fd, byte* msg, int n);
+void send_i_message(int fd, byte* msg, int n);
 
 /**
  * Sends DISC command to file fd.
  */
-void send_disc_command(int fd);
+void send_disc_message(int fd);
 
 /**
  * Sends UA command to file fd.
  */
-void send_ua_command(int fd);
+void send_ua_message(int fd);
 
 /**
  * Sends RR command to file fd.
  */
-void send_rr_command(int fd);
+void send_rr_message(int fd);
 
 /**
  * Sends REJ command to file fd.
  */
-void send_rej_command(int fd);
+void send_rej_message(int fd);
 
 /**
  * Prints array message that has the typical format of a message (with flag in the beginning and in the end).
