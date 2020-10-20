@@ -1,4 +1,4 @@
-#include "message.h"
+#include "dataLynker.h"
 
 
 int receiverNs = 0, emitterNr = 1;     //expected Ns by the receiver and expected Nr by the emitter

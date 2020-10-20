@@ -5,14 +5,14 @@ obj = $(src:.c=.o)
 
 all: reader writer
 
-reader: nc3.c message.o message.h 
-	$(CC) $(CFLAGS) -o reader message.o nc3.c
+reader: nc3.c dataLynker.o dataLynker.h 
+	$(CC) $(CFLAGS) -o reader dataLynker.o nc3.c
 
-writer: wnc3.c message.o message.h 
-	$(CC) $(CFLAGS) -o writer message.o wnc3.c
+writer: wnc3.c dataLynker.o dataLynker.h 
+	$(CC) $(CFLAGS) -o writer dataLynker.o wnc3.c
 
-message.o: message.c message.h
-	gcc -c message.c
+dataLynker.o: dataLynker.c dataLynker.h
+	gcc -c dataLynker.c
 
 .PHONY: clean
 clean:
