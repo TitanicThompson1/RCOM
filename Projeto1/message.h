@@ -17,20 +17,28 @@ typedef unsigned char byte;
 #define A 0x03
 #define BCC1(cmd) (byte)(A^cmd)
 
-//SET command
+//SET message
 #define C_SET 0x03
 
-//UA command
+//UA message
 #define C_UA 0x07
 
-//RR command
-#define C_RR(x) (byte)((x << 7) | 0x05)
+//RR message
+#define C_RR(nr) (byte)((nr << 7) | 0x05) 
 
-//DISC command
+//REJ message
+#define C_REJ(nr) (byte)((nr << 7) | 0x01)
+
+//DISC message
 #define C_DISC 0x0B
 
-//I command
-#define C_I(x) (byte)(x << 6) 
+//I messafe
+#define C_I(x) (byte)(x << 6)
+
+//Byte Stuffing
+#define ESC 0x7d
+#define FLAG_ESC 0x5e
+#define ESC_ESC 0x5d
 
 
 //States
@@ -51,7 +59,7 @@ typedef unsigned char byte;
 #define BCC1_POS   3
 #define FLAG2_POS  4
 
-//
+// The various types of messages
 enum MessageType{
     SET,
     UA,
@@ -62,29 +70,14 @@ enum MessageType{
 };
 
 /**
- * Receives a command of type MessageType, from file fd, and puts it in received_command array.
- */
-int ReceiveCommand(int fd, byte* received_command, enum MessageType message);
-
-/**
- * Receives the UA command, from file fd, and puts it in received_command array.
- */
-int ReceiveUA(int fd, byte *received_command);
-
-/**
- * Receives the RR command, from file fd, and puts it in received_command array.
- */
-int ReceiveRR(int fd, byte *received_command);
-
-/**
- * Receives the DISC command, from file fd, and puts it in received_command array.
- */
-int ReceiveDISC(int fd, byte *received_command);
-
-/**
  * Receives the DISC command, from file fd, and puts it in received_command array. The message is put in message.
 */
 int ReceiveI(int fd, byte *received_command);
+
+/**
+ * Receives a response of type DISC, UA, REJ or RR and return the type of the message received
+ */
+enum MessageType ReceiveResponse(int fd, byte *received_command);
 
 /**
  * Receives the data part of I message, from file fd. It puts the message in the correct position in received_command array.
@@ -95,7 +88,6 @@ int ReceiveMessage(int fd, byte* received_command);
  * Reads one byte from file fd and puts it on command.
  */
 int ReadOneByte(int fd, byte *command);
-
 
 /**
  * Sends SET command in array command to file fd.
@@ -108,23 +100,44 @@ void send_set_command(int fd);
 void send_i_command(int fd, byte* msg, int n);
 
 /**
+ * Sends DISC command to file fd.
+ */
+void send_disc_command(int fd);
+
+/**
  * Sends UA command to file fd.
  */
 void send_ua_command(int fd);
 
 /**
- * Prints array message that has the typical format of a message (with flag in the beginning and in the end)
+ * Sends RR command to file fd.
  */
-void print_message(byte *message);
+void send_rr_command(int fd);
+
+/**
+ * Sends REJ command to file fd.
+ */
+void send_rej_command(int fd);
+
+/**
+ * Prints array message that has the typical format of a message (with flag in the beginning and in the end).
+ * Optionally, before parameter can be used to write something before the message. If you don't desire, initialize before = NULL
+ */
+void print_message(char *before, byte *message);
 
 /**
  * Updates Ns and returns the current one
  */
-int updateNs();
+int updateLastNs();
 
 /**
  * Updates Nr and returns the current one
  */
-int updateNr();
+int updateLastNr();
 
+
+void updateReceiverNs();
+
+
+void updateEmitterNr();
 #endif

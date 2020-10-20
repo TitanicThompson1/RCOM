@@ -37,13 +37,13 @@ int main(int argc, char** argv)
 {
     int fd;
     struct termios oldtio, newtio;
-    byte message[5];
-    message[0] = 0x01;
-    message[1] = 0x02;
-    message[2] = 0x03;
-    message[3] = 0x04;
-    message[4] = 0x05;
-
+    byte message[6], received_command[255];
+    message[0] = 0x7e;
+    message[1] = 0x01;
+    message[2] = 0x02;
+    message[3] = 0x7d;
+    message[4] = 0x03;
+    message[4] = 0x04;
     //int i, sum = 0, speed = 0;
 
     /*
@@ -98,11 +98,24 @@ int main(int argc, char** argv)
 
     signal(SIGALRM, count);
     siginterrupt(SIGALRM, 1);
-
     
-    send_i_command(fd, message, 5);      
+    send_i_command(fd, message, 6);      
+    printf("Sent I\n");
 
-    sleep(1);
+    ReceiveResponse(fd, received_command);
+    printf("Received command\n");
+
+    send_i_command(fd, message, 6);      
+    printf("Sent I\n");
+
+    ReceiveResponse(fd, received_command);
+    printf("Received command\n");
+
+    send_i_command(fd, message, 6);      
+    printf("Sent I\n");
+
+    ReceiveResponse(fd, received_command);
+    printf("Received command\n");
 
     if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
         perror("tcsetattr");

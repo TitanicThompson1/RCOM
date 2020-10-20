@@ -73,12 +73,27 @@ int main(int argc, char** argv)
     }
 
     printf("New termios structure set\n");
-    enum MessageType type = I;
 
-    ReceiveCommand(fd, received_command, type);
+    ReceiveI(fd, received_command);
+    printf("Received command\n");
 
-    print_message(received_command);
+    send_rr_command(fd);
+    printf("Sent RR\n");
 
+    ReceiveI(fd, received_command);
+    printf("Received command\n");
+
+    send_rr_command(fd);
+    printf("Sent RR\n");
+
+
+    ReceiveI(fd, received_command);
+    printf("Received command\n");
+
+    send_rr_command(fd);
+    printf("Sent RR\n");
+
+    sleep(1);
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
