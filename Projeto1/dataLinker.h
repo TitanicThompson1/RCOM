@@ -9,8 +9,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 typedef unsigned char byte;
+
+#define BAUDRATE B38400
+
 
 //Common message parts
 #define FLAG 0x7e
@@ -66,8 +70,13 @@ enum MessageType{
     I,
     DISC,
     RR,
-    REJ
+    REJ,
+    TIME_OUT
 };
+
+//Role of computer
+#define TRANSMITTER 0
+#define RECEIVER 1
 
 /**
  * Receives the DISC command, from file fd, and puts it in received_command array. The message is put in message.
@@ -75,14 +84,14 @@ enum MessageType{
 int ReceiveI(int fd, byte *received_command);
 
 /**
- * Receives a response of type DISC, UA, REJ or RR and return the type of the message received
+ * Receives a response of type SET, DISC, UA, REJ or RR and return the type of the message received
  */
-enum MessageType ReceiveResponse(int fd, byte *received_command);
+enum MessageType ReceiveMessage(int fd, byte *received_command);
 
 /**
  * Receives the data part of I message, from file fd. It puts the message in the correct position in received_command array.
 */
-int ReceiveMessage(int fd, byte* received_command);
+int ReceiveIData(int fd, byte* received_command);
 
 /**
  * Reads one byte from file fd and puts it on command.
@@ -140,4 +149,62 @@ void updateReceiverNs();
 
 
 void updateEmitterNr();
+
+
+/**
+ * Establishes the connection between the computers. 
+ * Port contains the port where the communication takes place.
+ * Role indicates if we want to establish the connection as the receiver or emitter
+ * Returns the file descriptor of the port, or a negative integer in case of error
+ */
+int llopen(char *port, int role);
+
+/**
+ * Closes the connection previous established
+ * fd is the file descriptor of the port
+ * Return a positive integer in case of success, and a negative one, otherwise.
+ */
+int llclose(int fd, int role);
+
+
+
+/**
+ * Opens the serial port with name port for communication
+ */
+int open_serialPort(char *port);
+
+/**
+ * Sets the configuration of the serial port to the right one
+ */
+void set_costume_conf(int fd);
+
+/**
+ * The receiver receives a SET message and sends a UA message
+ * This opens the communication.
+ */
+int open_receiver(int fd);
+
+/**
+ * The emitter sends a SET message and receives an UA message.
+ * This opens the communication.
+ */
+int open_emitter(int fd);
+
+/**
+ * Resets the serial port to the default configuration
+ */
+int reset_serialPort_conf(int fd, struct termios oldtio);
+
+/**
+ * The emitter sends a DISC message, receives another DISC message, and finally sends an UA message
+ * This closes the communication.
+ */
+int close_emitter(int fd);
+
+/**
+ * The receiver receives a DISC message, sends another DISC message and receives a UA message.
+ * This opens the communication.
+ */
+int close_receiver(int fd);
+
 #endif

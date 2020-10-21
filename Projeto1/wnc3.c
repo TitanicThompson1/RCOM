@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "dataLynker.h"
+#include "dataLinker.h"
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
@@ -26,10 +26,10 @@ volatile int STOP=FALSE;
 int timeout_flag = 0;
 int n_alarm = 0;
 
-void count(){
-    timeout_flag = 1;
-    n_alarm++;
-}
+  void count(){
+      timeout_flag = 1;
+      n_alarm++;
+  }
 
 int main(int argc, char** argv)
 {

@@ -1,10 +1,19 @@
-#include "dataLynker.h"
+#include "dataLinker.h"
 
 
 int receiverNs = 0, emitterNr = 1;     //expected Ns by the receiver and expected Nr by the emitter
 int lastNs = 1, lastNr = 0;             //las Ns sent by emitter and last Nr sent by receiver
 
-enum MessageType ReceiveResponse(int fd, byte *received_command){
+int timeout_flag = 0, n_alarm = 0;
+struct termios oldtio;
+
+void count(){
+    timeout_flag = 1;
+    n_alarm++;
+}
+
+
+enum MessageType ReceiveMessage(int fd, byte *received_command){
     int current_state = STATE_START;
     enum MessageType ret;
     byte buf[1];
@@ -12,7 +21,7 @@ enum MessageType ReceiveResponse(int fd, byte *received_command){
     while(current_state != STATE_STOP){
 
         if(ReadOneByte(fd, buf) == -1){
-            return -1;
+            return TIME_OUT;
         }
 
         if(current_state == STATE_START){
@@ -46,6 +55,13 @@ enum MessageType ReceiveResponse(int fd, byte *received_command){
             if(buf[0] == FLAG){
                 printf("Received another flag\n");
                 current_state = STATE_FLAG;
+
+            }else if(buf[0] == C_SET){                       //receiving UA message
+
+                printf("C_SET read: %x\n", buf[0]);
+                current_state = STATE_C;
+                received_command[C_POS] = buf[0];
+                ret = SET;
 
             }else if(buf[0] == C_UA){                       //receiving UA message
 
@@ -84,6 +100,12 @@ enum MessageType ReceiveResponse(int fd, byte *received_command){
             if(buf[0] == FLAG){
                 printf("Received another flag\n");
                 current_state = STATE_FLAG;
+
+            }else if(ret == SET && buf[0] == BCC1(received_command[C_POS])){         // UA message
+
+                printf("BCC1_SET read: %x\n", buf[0]);
+                current_state = STATE_BCC1;
+                received_command[BCC1_POS] = buf[0];
 
             }else if(ret == UA && buf[0] == BCC1(received_command[C_POS])){         // UA message
 
@@ -136,18 +158,14 @@ enum MessageType ReceiveResponse(int fd, byte *received_command){
 int ReadOneByte(int fd, byte *command){
 
     if(read(fd, command, 1) == -1){
-        //TODO
-        /*if( timeout_flag == 1){
+        
+        if(timeout_flag == 1){
             timeout_flag = 0;
             return -1;
-        }*/
+        }
         perror("ReadOneByte");
-        exit(-1);
-    }/*
-    if(read == 0 || timeout_flag == 1){
-        timeout_flag = 0;
         return -1;
-    }*/
+    }
     return 0;
 }
 
@@ -231,7 +249,7 @@ int ReceiveI(int fd, byte *received_command){
     return 0;
 }
 
-int ReceiveMessage(int fd, byte* received_command){
+int ReceiveIData(int fd, byte* received_command){
     byte buf[1];
     int currentPos = BCC1_POS + 1;
     
@@ -426,7 +444,6 @@ int updateLastNr(){
     return currentNr;
 }
 
-
 void updateReceiverNs(){
     
     if(receiverNs == 0)
@@ -443,3 +460,197 @@ void updateEmitterNr(){
         emitterNr = 0;
 }
 
+int llopen(char *port, int role){
+    
+    int fd = open_serialPort(port);
+    
+    set_costume_conf(fd);
+
+    int res;
+
+    if(role == TRANSMITTER)
+        res = open_emitter(fd);
+    else if(role == RECEIVER){
+        res = open_receiver(fd);
+    }else{
+        printf("Unkwoned role.\n");
+        res = -1;
+    }
+
+    if(res == -1 )
+        return -1;
+    
+    return fd;
+}
+
+int open_serialPort(char *port){
+    int fd;
+
+    fd = open(port, O_RDWR | O_NOCTTY );
+    if (fd <0 ) {perror("/dev/ttyS0"); return -1; }
+
+    return fd;
+}
+
+void set_costume_conf(int fd){
+
+    struct termios newtio;
+     if (tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
+        perror("tcgetattr");
+        exit(-1);
+    }
+
+    bzero(&newtio, sizeof(newtio));
+    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio.c_iflag = IGNPAR;
+    newtio.c_oflag = 0;
+
+    /* set input mode (non-canonical, no echo,...) */
+    newtio.c_lflag = 0;
+
+    newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
+
+
+    tcflush(fd, TCIOFLUSH);
+
+    if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
+        perror("tcsetattr");
+        exit(-1);
+    }
+}
+
+int reset_serialPort_conf(int fd, struct termios oldtio){
+    if (tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+        perror("tcsetattr");
+        return -1;
+    } 
+    return 0;
+}
+
+int open_emitter(int fd){
+    byte received_message[255];
+
+    signal(SIGALRM, count);
+    siginterrupt(SIGALRM, 1);
+    
+    
+    while(n_alarm < 3){
+
+        send_set_message(fd);
+        alarm(3);
+        enum MessageType response = ReceiveMessage(fd, received_message);
+        
+        if(response == TIME_OUT){
+            printf("Time_out occcured. Resending message.\n");
+
+        }else if(response != UA){
+            printf("Received message from wrong type.\n");
+            continue;
+
+        }else {         //Received UA message
+            break;
+        }
+    }
+
+    if(n_alarm ==3){
+        printf("Couldn't establish connection.\n");
+        return -1;
+    }
+    return 0;
+}
+
+int open_receiver(int fd){
+    byte received_message[255];
+    
+    while(1){
+
+        enum MessageType response = ReceiveMessage(fd, received_message);
+        if(response != SET){
+            printf("Received message from wrong type.\n");
+            continue;
+        }else{
+            send_ua_message(fd);
+            break;
+        }
+    }
+    return 0;
+}
+
+int llclose(int fd, int role){
+    int res;
+
+    if(role == TRANSMITTER)
+        res = close_emitter(fd);
+    else if(role == RECEIVER){
+        res = close_receiver(fd);
+    }else{
+        printf("Unkwoned role.\n");
+        res = -1;
+    }
+    if(res == -1)
+        return res;
+
+    if(reset_serialPort_conf(fd, oldtio) == -1)
+        return -1;
+
+    close(fd);
+    return 0;
+    
+}
+
+int close_emitter(int fd){
+    byte received_message[255];
+
+    signal(SIGALRM, count);
+    siginterrupt(SIGALRM, 1);
+    
+    
+    while(n_alarm < 3){
+
+        send_disc_message(fd);
+        alarm(3);
+        enum MessageType response = ReceiveMessage(fd, received_message);
+        
+        if(response == TIME_OUT){
+            printf("Time_out occcured. Resending message.\n");
+
+        }else if(response != DISC){
+            printf("Received message from wrong type.\n");
+            continue;
+        }else{
+            send_ua_message(fd);
+            break;
+        }
+    }
+
+    if(n_alarm ==3){
+        printf("Couldn't establish connection.\n");
+        return -1;
+    }
+    return 0;
+}
+
+int close_receiver(int fd){
+    byte received_message[255];
+    
+    while(1){
+
+        enum MessageType response = ReceiveMessage(fd, received_message);
+        if(response != DISC){
+            printf("Received message from wrong type.\n");
+            continue;
+        }
+
+        send_disc_message(fd);
+
+        response = ReceiveMessage(fd, received_message);
+        if(response != UA){
+            printf("Received message from wrong type.\n");
+            continue;
+        }else {
+            break;
+        }
+    }
+    return 0;
+}
