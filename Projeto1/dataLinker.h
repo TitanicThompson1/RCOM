@@ -171,14 +171,14 @@ int llclose(int fd, int role);
 * Does the byte stuffing by calling send_i_message.
 * Returns the length of characters written .
 */
-int llwrite(int fd, char* buffer, int length);
+int llwrite(int fd, byte* buffer, int length);
 
 /**
 * Reads received frame by calling ReceiveI.
 * Does the destuffing by calling ReceiveIData.
 * Returns the length of all characters read. 
 */
-int llread(int fd, char* buffer);
+int llread(int fd, byte* buffer);
 
 /**
  * Opens the serial port with name port for communication

@@ -238,7 +238,7 @@ int ReceiveI(int fd, byte *received_command){
                     return -1;
 
                 updateReceiverNs();                
-                return 0;
+                return size + 4;
 
             }else{
                 printf("Error in reading BCC1_I. Received %x\n", buf[0]);
@@ -246,23 +246,24 @@ int ReceiveI(int fd, byte *received_command){
             }
         }
     }
-    return current_state;
+    return 0;
 }
 
 int ReceiveIData(int fd, byte* received_command){
     byte buf[1];
-    int currentPos = BCC1_POS + 1;
+    int currentPos = BCC1_POS + 1, size = 0;
     
     byte currentXOR = received_command[BCC1_POS], previousByte = 0x00;
 
     ReadOneByte(fd,buf);
+    size++;
     while(buf[0] != FLAG){
         
         //Byte destuffing
         if(buf[0] == ESC){
 
             ReadOneByte(fd,buf);
-
+            size++;
             if(buf[0] == FLAG_ESC){
                 received_command[currentPos++] = FLAG;
 
@@ -279,6 +280,7 @@ int ReceiveIData(int fd, byte* received_command){
         
         previousByte = received_command[currentPos - 1];
         ReadOneByte(fd,buf);
+        size++
     }
     //buf[0] stores the FLAG
     received_command[currentPos] = buf[0];
@@ -289,7 +291,7 @@ int ReceiveIData(int fd, byte* received_command){
     printf("BCC2 received: %x\n", previousByte);
     printf("Flag read: %x\n", buf[0]);
 
-    return 0;
+    return size;
 }
 
 void send_set_message(int fd){
@@ -657,15 +659,27 @@ int close_receiver(int fd){
     return 0;
 }
 
-int llwrite(int fd, char* buffer, int length){
+int llwrite(int fd, byte* buffer, int length){
     int numWrittenCharacters = 0;
 
     signal(SIGALRM, count);
     siginterrupt(SIGALRM, 1);
-    
+    byte received_message[255];
+    enum MessageType ret;
+
     while(n_alarm < 3){
         //send frame
         numWrittenCharacters = send_i_message(fd, buffer, length);
+        ret = ReceiveMessage(fd,received_message);
+        if(ret == REJ){
+            printf("Received REJ message.\n");
+
+        }else if(ret == TIME_OUT){
+            printf("Time_out occurred.\n");
+
+        }else if(ret == RR){
+            printf("Received RR message. \n");
+        }
     }
 
     if(n_alarm ==3){
@@ -683,8 +697,8 @@ int llwrite(int fd, char* buffer, int length){
      
 }
 
-int llread(int fd, char* buffer){
-
+int llread(int fd, byte* buffer){
+    /*
     int currentState;
     int readLength = 0;
     char readByte;
@@ -701,4 +715,16 @@ int llread(int fd, char* buffer){
         }
     }
     return readLength;  //returns the number of read characters
-}
+    */
+
+   int ret = ReceiveI(fd, buffer);
+   if(ret == -1){
+       printf("Error in receiving message\n");
+       send_rej_message(fd);
+       return -1;
+   }else{
+       printf("Received Message!\n");
+       return ret;
+   }
+   
+}   
