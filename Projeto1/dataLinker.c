@@ -233,7 +233,7 @@ int ReceiveI(int fd, byte *received_command){
                 current_state = STATE_STOP;
                 received_command[BCC1_POS] = buf[0];                
 
-                int ret = ReceiveMessage(fd, received_command);
+                int ret = ReceiveIData(fd, received_command);
                 if(ret == -1)
                     return -1;
 
@@ -246,7 +246,7 @@ int ReceiveI(int fd, byte *received_command){
             }
         }
     }
-    return 0;
+    return current_state;
 }
 
 int ReceiveIData(int fd, byte* received_command){
@@ -306,7 +306,7 @@ void send_set_message(int fd){
     printf("%d bytes written\n", res);
 }
 
-void send_i_message(int fd, byte *msg, int n){    
+int send_i_message(int fd, byte *msg, int n){    
     int res;
     byte command[255];
 
@@ -348,6 +348,8 @@ void send_i_message(int fd, byte *msg, int n){
     res = write(fd, command, i + 1);
     printf("%d bytes written\n", res);
     print_message("I command",command);
+
+    return res;
 }
 
 void send_disc_message(int fd){
@@ -653,4 +655,50 @@ int close_receiver(int fd){
         }
     }
     return 0;
+}
+
+int llwrite(int fd, char* buffer, int length){
+    int numWrittenCharacters = 0;
+
+    signal(SIGALRM, count);
+    siginterrupt(SIGALRM, 1);
+    
+    while(n_alarm < 3){
+        //send frame
+        numWrittenCharacters = send_i_message(fd, buffer, length);
+    }
+
+    if(n_alarm ==3){
+        printf("Couldn't establish connection.\n");
+        return -1;
+    }
+    
+    if(numWrittenCharacters == length){
+        return numWrittenCharacters;  //returns the number of written characters
+    }
+    else{
+        printf("Error in llwrite : didn't write all characters");
+        return -1; 
+    }
+     
+}
+
+int llread(int fd, char* buffer){
+
+    int currentState;
+    int readLength = 0;
+    char readByte;
+
+    
+    while(currentState != STATE_STOP){
+        if(read(fd, &readByte, 1) == 0){
+            currentState = ReceiveI(fd, readByte);  //reads frame and calls ReceiveIData that does the destuffing
+            buffer[readLength++] = readByte;        //stores read frame inside buffer
+        }
+        else {
+            printf("Error in llread : reading byte");
+            return -1; //error
+        }
+    }
+    return readLength;  //returns the number of read characters
 }

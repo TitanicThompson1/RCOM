@@ -36,7 +36,7 @@ typedef unsigned char byte;
 //DISC message
 #define C_DISC 0x0B
 
-//I messafe
+//I message
 #define C_I(x) (byte)(x << 6)
 
 //Byte Stuffing
@@ -106,7 +106,7 @@ void send_set_message(int fd);
 /**
  * Sends I command with message msg to file fd.
  */
-void send_i_message(int fd, byte* msg, int n);
+int send_i_message(int fd, byte* msg, int n);
 
 /**
  * Sends DISC command to file fd.
@@ -166,7 +166,19 @@ int llopen(char *port, int role);
  */
 int llclose(int fd, int role);
 
+/**
+* Creates frame to send to receiver. 
+* Does the byte stuffing by calling send_i_message.
+* Returns the length of characters written .
+*/
+int llwrite(int fd, char* buffer, int length);
 
+/**
+* Reads received frame by calling ReceiveI.
+* Does the destuffing by calling ReceiveIData.
+* Returns the length of all characters read. 
+*/
+int llread(int fd, char* buffer);
 
 /**
  * Opens the serial port with name port for communication
