@@ -71,7 +71,8 @@ enum MessageType{
     DISC,
     RR,
     REJ,
-    TIME_OUT
+    TIME_OUT,
+    ERROR
 };
 
 //Role of computer
@@ -79,14 +80,36 @@ enum MessageType{
 #define RECEIVER 1
 
 /**
- * Receives the DISC command, from file fd, and puts it in received_command array. The message is put in message.
-*/
-int ReceiveI(int fd, byte *received_command);
+ * @brief Activates the debug mode(= printf throughout the code)
+ * 
+ */
+void activate_debug(void);
+
 
 /**
- * Receives a response of type SET, DISC, UA, REJ or RR and return the type of the message received
+ * @brief Deactivates the debug mode
+ * 
  */
-enum MessageType ReceiveMessage(int fd, byte *received_command);
+void deactivate_debug(void);
+
+
+/**
+ * @brief Receives the I message, from file fd, and puts it in received_message array
+ * 
+ * @param fd file descriptor of serial port
+ * @param received_message the array where the message is going to be stored
+ * @return int -1 in case of error; the size of the message otherwise
+ */
+int ReceiveI(int fd, byte *received_message);
+
+/**
+ * @brief Receives a response of type SET, DISC, UA, REJ or RR and return the type of the message received
+ * 
+ * @param fd file descriptor of serial port
+ * @param received_message the array where the message is going to be stored
+ * @return enum MessageType the type of the message received
+ */
+enum MessageType ReceiveMessage(int fd, byte *received_message);
 
 /**
  * Receives the data part of I message, from file fd. It puts the message in the correct position in received_command array.
@@ -101,7 +124,7 @@ int ReadOneByte(int fd, byte *command);
 /**
  * Sends SET command in array command to file fd.
  */
-void send_set_message(int fd);
+int send_set_message(int fd);
 
 /**
  * Sends I command with message msg to file fd.
@@ -111,28 +134,28 @@ int send_i_message(int fd, byte* msg, int n);
 /**
  * Sends DISC command to file fd.
  */
-void send_disc_message(int fd);
+int send_disc_message(int fd);
 
 /**
  * Sends UA command to file fd.
  */
-void send_ua_message(int fd);
+int send_ua_message(int fd);
 
 /**
  * Sends RR command to file fd.
  */
-void send_rr_message(int fd);
+int  send_rr_message(int fd);
 
 /**
  * Sends REJ command to file fd.
  */
-void send_rej_message(int fd);
+int send_rej_message(int fd);
 
 /**
  * Prints array message that has the typical format of a message (with flag in the beginning and in the end).
  * Optionally, before parameter can be used to write something before the message. If you don't desire, initialize before = NULL
  */
-void print_message(char *before, byte *message);
+void print_message(char *before, byte *message, int size);
 
 /**
  * Updates Ns and returns the current one
@@ -164,7 +187,7 @@ int llopen(char *port, int role);
  * fd is the file descriptor of the port
  * Return a positive integer in case of success, and a negative one, otherwise.
  */
-int llclose(int fd, int role);
+int llclose(int fd);
 
 /**
 * Creates frame to send to receiver. 
@@ -188,7 +211,7 @@ int open_serialPort(char *port);
 /**
  * Sets the configuration of the serial port to the right one
  */
-void set_costume_conf(int fd);
+int set_costume_conf(int fd);
 
 /**
  * The receiver receives a SET message and sends a UA message

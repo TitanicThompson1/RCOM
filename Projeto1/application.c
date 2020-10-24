@@ -1,10 +1,10 @@
 #include "application.h"
 
-int sendFile(int fd, char * filename, int port){
+int sendFile(char * filename, char *port){
     
     int fileLength = 0;
     
-    llopen(fd, TRANSMITTER);
+    int fd = llopen(port, TRANSMITTER);
 
     //getting file length
     struct stat buffer; 

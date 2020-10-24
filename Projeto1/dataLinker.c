@@ -1,7 +1,9 @@
 #include "dataLinker.h"
 
+int DEBUG_MODE = 0;                     //0 indicates inactive. 1 is active. Debug mode does some extra printf
+int ROLE = -1;                          //0 for TRANSMITER, 1 for RECEIVER
 
-int receiverNs = 0, emitterNr = 1;     //expected Ns by the receiver and expected Nr by the emitter
+int receiverNs = 0, emitterNr = 1;      //expected Ns by the receiver and expected Nr by the emitter
 int lastNs = 1, lastNr = 0;             //las Ns sent by emitter and last Nr sent by receiver
 
 int timeout_flag = 0, n_alarm = 0;
@@ -12,139 +14,148 @@ void count(){
     n_alarm++;
 }
 
+void activate_debug(void){
+    DEBUG_MODE = 1;
+}
+void deactivate_debug(void){
+    DEBUG_MODE = 0;
+}
 
-enum MessageType ReceiveMessage(int fd, byte *received_command){
+
+enum MessageType ReceiveMessage(int fd, byte *received_message){
     int current_state = STATE_START;
     enum MessageType ret;
     byte buf[1];
 
     while(current_state != STATE_STOP){
-
-        if(ReadOneByte(fd, buf) == -1){
+        int ROBres = ReadOneByte(fd, buf);
+        if(ROBres == -2){
             return TIME_OUT;
+        }else if(ROBres == -1){
+            return ERROR;
         }
 
         if(current_state == STATE_START){
 
             if(buf[0] != FLAG){
-                printf("Error in reading FLAG: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading FLAG: %x\n", buf[0]);
 
             }else{
-                printf("Flag read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Flag read: %x\n", buf[0]);
 
                 current_state = STATE_FLAG;
-                received_command[FLAG1_POS] = buf[0];
+                received_message[FLAG1_POS] = buf[0];
             }
 
         }else if(current_state == STATE_FLAG){
 
             if(buf[0] == FLAG){
-                printf("Received another flag\n");
+                if(DEBUG_MODE) printf("Received another flag\n");
 
             }else if(buf[0] == A){
 
-                printf("A read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("A read: %x\n", buf[0]);
                 current_state = STATE_A;
-                received_command[A_POS] = buf[0];
+                received_message[A_POS] = buf[0];
             }else{
-                printf("Error in reading A. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading A. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
 
         }else if(current_state == STATE_A){
             if(buf[0] == FLAG){
-                printf("Received another flag\n");
+                if(DEBUG_MODE) printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
             }else if(buf[0] == C_SET){                       //receiving UA message
 
-                printf("C_SET read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("C_SET read: %x\n", buf[0]);
                 current_state = STATE_C;
-                received_command[C_POS] = buf[0];
+                received_message[C_POS] = buf[0];
                 ret = SET;
 
             }else if(buf[0] == C_UA){                       //receiving UA message
 
-                printf("C_UA read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("C_UA read: %x\n", buf[0]);
                 current_state = STATE_C;
-                received_command[C_POS] = buf[0];
+                received_message[C_POS] = buf[0];
                 ret = UA;
 
             }else if (buf[0] == C_RR(emitterNr)){          //receiving RR message
 
-                printf("C_RR read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("C_RR read: %x\n", buf[0]);
                 current_state = STATE_C;
-                received_command[C_POS] = buf[0];
+                received_message[C_POS] = buf[0];
                 ret = RR;
 
             }else if (buf[0] == C_REJ(emitterNr)){         //receiving REJ message
 
-                printf("C_REJ read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("C_REJ read: %x\n", buf[0]);
                 current_state = STATE_C;
-                received_command[C_POS] = buf[0];
+                received_message[C_POS] = buf[0];
                 ret = REJ;
 
             }else if (buf[0] == C_DISC){                    //receiving DISC message
 
-                printf("C_DISC read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("C_DISC read: %x\n", buf[0]);
                 current_state = STATE_C;
-                received_command[C_POS] = buf[0];
+                received_message[C_POS] = buf[0];
                 ret = DISC;
 
             }else{
-                printf("Error in reading C. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading C. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
 
         }else if(current_state == STATE_C){
             if(buf[0] == FLAG){
-                printf("Received another flag\n");
+                if(DEBUG_MODE) printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
-            }else if(ret == SET && buf[0] == BCC1(received_command[C_POS])){         // UA message
+            }else if(ret == SET && buf[0] == BCC1(received_message[C_POS])){         // UA message
 
-                printf("BCC1_SET read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("BCC1_SET read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
-                received_command[BCC1_POS] = buf[0];
+                received_message[BCC1_POS] = buf[0];
 
-            }else if(ret == UA && buf[0] == BCC1(received_command[C_POS])){         // UA message
+            }else if(ret == UA && buf[0] == BCC1(received_message[C_POS])){         // UA message
 
-                printf("BCC1_UA read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("BCC1_UA read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
-                received_command[BCC1_POS] = buf[0];
+                received_message[BCC1_POS] = buf[0];
 
-            }else if (ret == RR && buf[0] == BCC1(received_command[C_POS])){        // RR message
+            }else if (ret == RR && buf[0] == BCC1(received_message[C_POS])){        // RR message
 
-                printf("BCC1_RR read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("BCC1_RR read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
-                received_command[BCC1_POS] = buf[0];
+                received_message[BCC1_POS] = buf[0];
                 
-            }else if(ret == REJ && buf[0] == BCC1(received_command[C_POS])){        // REJ message
+            }else if(ret == REJ && buf[0] == BCC1(received_message[C_POS])){        // REJ message
 
-                printf("BCC1_REJ read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("BCC1_REJ read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
-                received_command[BCC1_POS] = buf[0];
+                received_message[BCC1_POS] = buf[0];
 
-            }else if(ret == DISC &&  buf[0] == BCC1(received_command[C_POS])){      // DISC message
+            }else if(ret == DISC &&  buf[0] == BCC1(received_message[C_POS])){      // DISC message
 
-                printf("BCC1_DISC read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("BCC1_DISC read: %x\n", buf[0]);
                 current_state = STATE_BCC1;
-                received_command[BCC1_POS] = buf[0];
+                received_message[BCC1_POS] = buf[0];
 
             }else {
 
-                printf("Error in reading BCC1_UA. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading BCC1_UA. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
         }else if(current_state == STATE_BCC1){
 
             if(buf[0] == FLAG){
-                printf("Flag read: %x\n", buf[0]);
-                received_command[FLAG2_POS] = buf[0];
+                if(DEBUG_MODE) printf("Flag read: %x\n", buf[0]);
+                received_message[FLAG2_POS] = buf[0];
                 current_state = STATE_STOP;
 
             }else{
-                printf("Error in reading FLAG. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading FLAG. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
         }
@@ -161,7 +172,7 @@ int ReadOneByte(int fd, byte *command){
         
         if(timeout_flag == 1){
             timeout_flag = 0;
-            return -1;
+            return -2;
         }
         perror("ReadOneByte");
         return -1;
@@ -169,79 +180,79 @@ int ReadOneByte(int fd, byte *command){
     return 0;
 }
 
-int ReceiveI(int fd, byte *received_command){
+int ReceiveI(int fd, byte *received_message){
     
     int current_state = STATE_START;
     byte buf[1];
 
     while(current_state != STATE_STOP){
 
-        if(ReadOneByte(fd, buf) == -1){
+        if(ReadOneByte(fd, buf)){
             return -1;
         }
 
         if(current_state == STATE_START){
 
             if(buf[0] != FLAG){
-                printf("Error in reading FLAG: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading FLAG: %x\n", buf[0]);
 
             }else{
-                printf("Flag read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Flag read: %x\n", buf[0]);
                 current_state = STATE_FLAG;
-                received_command[FLAG1_POS] = buf[0];
+                received_message[FLAG1_POS] = buf[0];
             }
 
         }else if(current_state == STATE_FLAG){
 
             if(buf[0] == FLAG){
-                printf("Received another flag\n");
+                if(DEBUG_MODE) printf("Received another flag\n");
 
             }else if(buf[0] == A){
 
-                printf("A read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("A read: %x\n", buf[0]);
                 current_state = STATE_A;
-                received_command[A_POS] = buf[0];
+                received_message[A_POS] = buf[0];
             }else{
-                printf("Error in reading A. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading A. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
 
         }else if(current_state == STATE_A){
             if(buf[0] == FLAG){
-                printf("Received another flag\n");
+                if(DEBUG_MODE) printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
             }else if(buf[0] == C_I(receiverNs)){
 
-                printf("C_I read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("C_I read: %x\n", buf[0]);
                 current_state = STATE_C;
-                received_command[C_POS] = buf[0];
+                received_message[C_POS] = buf[0];
             }else{
-                printf("Error in reading C_. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading C_. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
 
         }else if(current_state == STATE_C){
 
             if(buf[0] == FLAG){
-                printf("Received another flag\n");
+                if(DEBUG_MODE) printf("Received another flag\n");
                 current_state = STATE_FLAG;
 
             }else if(buf[0] == BCC1(C_I(receiverNs))){
 
-                printf("BCC1_I read: %x\n", buf[0]);
+                if(DEBUG_MODE) printf("BCC1_I read: %x\n", buf[0]);
                 current_state = STATE_STOP;
-                received_command[BCC1_POS] = buf[0];                
+                received_message[BCC1_POS] = buf[0];                
 
-                int ret = ReceiveIData(fd, received_command);
+                int ret = ReceiveIData(fd, received_message);
                 if(ret == -1)
                     return -1;
 
                 updateReceiverNs();                
-                return size + 4;
+                return ret;
 
             }else{
-                printf("Error in reading BCC1_I. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading BCC1_I. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
         }
@@ -280,7 +291,7 @@ int ReceiveIData(int fd, byte* received_command){
         
         previousByte = received_command[currentPos - 1];
         ReadOneByte(fd,buf);
-        size++
+        size++;
     }
     //buf[0] stores the FLAG
     received_command[currentPos] = buf[0];
@@ -288,24 +299,28 @@ int ReceiveIData(int fd, byte* received_command){
     //After the cycle ends, the BCC2 is stored in previousByte
     if(currentXOR != previousByte)
         return -1;
-    printf("BCC2 received: %x\n", previousByte);
-    printf("Flag read: %x\n", buf[0]);
+    if(DEBUG_MODE) printf("BCC2 received: %x\n", previousByte);
+    if(DEBUG_MODE) printf("Flag read: %x\n", buf[0]);
 
-    return size;
+    return currentPos + 1;
 }
 
-void send_set_message(int fd){
-    int res;
+int send_set_message(int fd){
 
-    byte command[5];
-    command[0] = FLAG;
-    command[1] = A;
-    command[2] = C_SET;
-    command[3] = BCC1(C_SET);
-    command[4] = FLAG;
+    byte message[5];
+    message[0] = FLAG;
+    message[1] = A;
+    message[2] = C_SET;
+    message[3] = BCC1(C_SET);
+    message[4] = FLAG;
 
-    res = write(fd, command, 5);
-    printf("%d bytes written\n", res);
+    int res = write(fd, message, 5);
+    if(res <= 0){
+        printf("Error in writing to serialPort\n");
+        return -1;
+    }
+    if(DEBUG_MODE) print_message("SET: ", message, 5);
+    return 0;
 }
 
 int send_i_message(int fd, byte *msg, int n){    
@@ -348,14 +363,13 @@ int send_i_message(int fd, byte *msg, int n){
     command[++i] = FLAG;
 
     res = write(fd, command, i + 1);
-    printf("%d bytes written\n", res);
-    print_message("I command",command);
+    if(DEBUG_MODE) printf("%d bytes written\n", res);
+    print_message("I command", command, i + 1);
 
     return res;
 }
 
-void send_disc_message(int fd){
-    int res;
+int send_disc_message(int fd){
     byte disc_reply[5];
 
     disc_reply[0] = FLAG;
@@ -364,13 +378,16 @@ void send_disc_message(int fd){
     disc_reply[3] = BCC1(C_DISC);
     disc_reply[4] = FLAG;
 
-    res = write(fd, disc_reply, 5);
-    printf("%d bytes written\n", res);
-
+    int res = write(fd, disc_reply, 5);
+    if(res <= 0){
+        printf("Error in writing to serialPort\n");
+        return -1;
+    }
+    if(DEBUG_MODE) print_message("DISC: ", disc_reply, 5);
+    return 0;
 }
 
-void send_ua_message(int fd){
-    int res;
+int  send_ua_message(int fd){
     byte ua_reply[5];
 
     ua_reply[0] = FLAG;
@@ -378,13 +395,17 @@ void send_ua_message(int fd){
     ua_reply[2] = C_UA;
     ua_reply[3] = BCC1(C_UA);
     ua_reply[4] = FLAG;
-
-    res = write(fd, ua_reply, 5);
-    printf("%d bytes written\n", res);
+    
+    int res = write(fd, ua_reply, 5);
+    if(res <= 0){
+        printf("Error in writing to serialPort\n");
+        return -1;
+    }
+    if(DEBUG_MODE) print_message("UA: ", ua_reply, 5);
+    return 0;
 }
 
-void send_rr_message(int fd){
-    int res;
+int send_rr_message(int fd){
     byte rr_reply[5];
 
     rr_reply[0] = FLAG;
@@ -394,12 +415,16 @@ void send_rr_message(int fd){
     rr_reply[3] = BCC1(rr_reply[2]);
     rr_reply[4] = FLAG;
 
-    res = write(fd, rr_reply, 5);
-    printf("%d bytes written\n", res);
+    int res = write(fd, rr_reply, 5);
+    if(res <= 0){
+        printf("Error in writing to serialPort\n");
+        return -1;
+    }
+    if(DEBUG_MODE) print_message("RR: ", rr_reply, 5);
+    return 0;
 }
 
-void send_rej_message(int fd){
-    int res;
+int send_rej_message(int fd){
     byte rej_reply[5];
 
     rej_reply[0] = FLAG;
@@ -409,21 +434,23 @@ void send_rej_message(int fd){
     rej_reply[3] = BCC1(rej_reply[2]);
     rej_reply[4] = FLAG;
 
-    res = write(fd, rej_reply, 5);
-    printf("%d bytes written\n", res);
+    int res = write(fd, rej_reply, 5);
+    if(res <= 0){
+        printf("Error in writing to serialPort\n");
+        return -1;
+    }
+    if(DEBUG_MODE) print_message("REJ: ", rej_reply, 5);
+    return 0;
 }
 
-void print_message(char *before, byte *message){
-    if( before != NULL)
-        printf("%s ", before);
-    
-    printf("%x ",message[0]);
-    int i = 1;
-    while(message[i] != FLAG){
+void print_message(char *before, byte *message, int size){
+
+    if(before != NULL)
+        printf(before);
+
+    for (int i = 0; i < size; i++){
         printf("%x ",message[i]);
-        i++;
     }
-    printf("%x ",message[i]);
     printf("\n");
 }
 
@@ -468,7 +495,8 @@ int llopen(char *port, int role){
     
     int fd = open_serialPort(port);
     
-    set_costume_conf(fd);
+    if (set_costume_conf(fd) == -1)
+        return -1;
 
     int res;
 
@@ -480,6 +508,7 @@ int llopen(char *port, int role){
         printf("Unkwoned role.\n");
         res = -1;
     }
+    ROLE = role;
 
     if(res == -1 )
         return -1;
@@ -491,17 +520,17 @@ int open_serialPort(char *port){
     int fd;
 
     fd = open(port, O_RDWR | O_NOCTTY );
-    if (fd <0 ) {perror("/dev/ttyS0"); return -1; }
+    if (fd <0 ) {perror("port"); return -1; }
 
     return fd;
 }
 
-void set_costume_conf(int fd){
+int set_costume_conf(int fd){
 
     struct termios newtio;
      if (tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
         perror("tcgetattr");
-        exit(-1);
+        return -1;
     }
 
     bzero(&newtio, sizeof(newtio));
@@ -520,8 +549,9 @@ void set_costume_conf(int fd){
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
         perror("tcsetattr");
-        exit(-1);
+        return -1;
     }
+    return 0;
 }
 
 int reset_serialPort_conf(int fd, struct termios oldtio){
@@ -533,16 +563,17 @@ int reset_serialPort_conf(int fd, struct termios oldtio){
 }
 
 int open_emitter(int fd){
-    byte received_message[255];
+    byte received_message[5];
 
     signal(SIGALRM, count);
     siginterrupt(SIGALRM, 1);
     
-    
+     
     while(n_alarm < 3){
 
-        send_set_message(fd);
+        send_set_message(fd);   
         alarm(3);
+        
         enum MessageType response = ReceiveMessage(fd, received_message);
         
         if(response == TIME_OUT){
@@ -552,20 +583,19 @@ int open_emitter(int fd){
             printf("Received message from wrong type.\n");
             continue;
 
-        }else {         //Received UA message
+        }else {
             break;
         }
     }
 
     if(n_alarm ==3){
-        printf("Couldn't establish connection.\n");
         return -1;
     }
     return 0;
 }
 
 int open_receiver(int fd){
-    byte received_message[255];
+    byte received_message[5];
     
     while(1){
 
@@ -581,12 +611,12 @@ int open_receiver(int fd){
     return 0;
 }
 
-int llclose(int fd, int role){
+int llclose(int fd){
     int res;
 
-    if(role == TRANSMITTER)
+    if(ROLE == TRANSMITTER)
         res = close_emitter(fd);
-    else if(role == RECEIVER){
+    else if(ROLE == RECEIVER){
         res = close_receiver(fd);
     }else{
         printf("Unkwoned role.\n");
@@ -604,7 +634,7 @@ int llclose(int fd, int role){
 }
 
 int close_emitter(int fd){
-    byte received_message[255];
+    byte received_message[5];
 
     signal(SIGALRM, count);
     siginterrupt(SIGALRM, 1);
@@ -629,14 +659,14 @@ int close_emitter(int fd){
     }
 
     if(n_alarm ==3){
-        printf("Couldn't establish connection.\n");
+        printf("Couldn't close connection.\n");
         return -1;
     }
     return 0;
 }
 
 int close_receiver(int fd){
-    byte received_message[255];
+    byte received_message[5];
     
     while(1){
 
@@ -660,10 +690,11 @@ int close_receiver(int fd){
 }
 
 int llwrite(int fd, byte* buffer, int length){
-    int numWrittenCharacters = 0;
+    int numWrittenCharacters;
 
     signal(SIGALRM, count);
     siginterrupt(SIGALRM, 1);
+
     byte received_message[255];
     enum MessageType ret;
 
@@ -679,6 +710,7 @@ int llwrite(int fd, byte* buffer, int length){
 
         }else if(ret == RR){
             printf("Received RR message. \n");
+            break;  
         }
     }
 
@@ -687,13 +719,9 @@ int llwrite(int fd, byte* buffer, int length){
         return -1;
     }
     
-    if(numWrittenCharacters == length){
-        return numWrittenCharacters;  //returns the number of written characters
-    }
-    else{
-        printf("Error in llwrite : didn't write all characters");
-        return -1; 
-    }
+    
+    return numWrittenCharacters;  //returns the number of written characters
+    
      
 }
 
@@ -724,6 +752,7 @@ int llread(int fd, byte* buffer){
        return -1;
    }else{
        printf("Received Message!\n");
+       send_rr_message(fd);
        return ret;
    }
    

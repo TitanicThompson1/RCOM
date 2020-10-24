@@ -11,7 +11,7 @@
 * Responsible for calling the necessary functions to create the control packets and data packets, and sending them.
 * Return 0 for success.
 */
-int sendFile(int fd, char* filename, int port);
+int sendFile(char* filename, char *port);
 
 /*
 * Creates the corresponding control packet and sends it.
