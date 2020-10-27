@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv)
 { 
-  /*
+  
   if ( (argc < 3) || ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0) )) {
     printf("Usage: writer\tnserial SerialPort\tfilename \n\tex: nserial /dev/ttyS1 pinguim.gif\n");
     exit(-1);
@@ -12,11 +12,13 @@ int main(int argc, char** argv)
   if(sendFile(argv[2], argv[1]) < 0){
       exit(-1);
   }
-  */
-
+  
+/*
   byte buf[512] = {0x01, 0x02, 0x03};
 
-  int fd = llopen(argv[1], RECEIVER);
+  activate_debug();
+  int fd = llopen(argv[1], RECEIVER); 
+  printf("Opened Communication\n");
 
   llwrite(fd, buf, 3);
   printf("First wrote\n");
@@ -37,5 +39,6 @@ int main(int argc, char** argv)
   printf("Six wrote\n");
 
   llclose(fd);
-
+  printf("Opened Communication\n");
+  deactivate_debug();*/
 }

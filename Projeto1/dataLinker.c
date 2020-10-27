@@ -266,7 +266,9 @@ int ReceiveIData(int fd, byte* received_message, byte *result){
     
     byte currentXOR = received_message[BCC1_POS], previousByte = 0x00;
 
-    ReadOneByte(fd,buf);
+    if(DEBUG_MODE) printf("Starting to receive data\n");
+
+    ReadOneByte(fd, buf);
     while(buf[0] != FLAG){
         
         //Byte destuffing
@@ -275,11 +277,11 @@ int ReceiveIData(int fd, byte* received_message, byte *result){
             ReadOneByte(fd,buf);
             if(buf[0] == FLAG_ESC){
                 received_message[currentPos++] = FLAG;
-                result[size++] = buf[0];
+                result[size++] =FLAG;
 
             }else if(buf[0] == ESC_ESC){
                 received_message[currentPos++] = ESC;
-                result[size++] = buf[0];
+                result[size++] = ESC;
 
             }
 
@@ -293,7 +295,6 @@ int ReceiveIData(int fd, byte* received_message, byte *result){
         
         previousByte = received_message[currentPos - 1];
         ReadOneByte(fd,buf);
-        size++;
     }
     //buf[0] stores the FLAG
     received_message[currentPos] = buf[0];
@@ -331,7 +332,7 @@ int send_set_message(int fd){
 
 int send_i_message(int fd, byte *msg, int n){    
     int res;
-    if( n > 506){
+    if( n > MAX_SIZE){
         printf("Error: Data size to big to send\n");
         return -1;
     }
@@ -357,12 +358,12 @@ int send_i_message(int fd, byte *msg, int n){
         //Byte Stuffing
         if(msg[j] == FLAG){                     
             
-            command[i] = ESC;
-            command[++i] = FLAG_ESC;
+            command[i++] = ESC;
+            command[i] = FLAG_ESC;
         }else if(msg[j] == ESC){
             
-            command[i] = ESC;
-            command[++i] = ESC_ESC;
+            command[i++] = ESC;
+            command[i] = ESC_ESC;
         }else {
 
             command[i] = msg[j];            
@@ -374,8 +375,7 @@ int send_i_message(int fd, byte *msg, int n){
     command[i++] = currentXOR;                    //BCC2
     command[i++] = FLAG;
 
-    res = write(fd, command, i);
-    if(DEBUG_MODE) printf("%d bytes written\n", res);
+    res = write(fd, command, i);    
     if(DEBUG_MODE) print_message("I command", command, i );
 
     return res;
@@ -458,7 +458,7 @@ int send_rej_message(int fd){
 void print_message(char *before, byte *message, int size){
 
     if(before != NULL)
-        printf(before);
+        printf("%s", before);
 
     for (int i = 0; i < size; i++){
         printf("%x ",message[i]);
@@ -506,7 +506,8 @@ void updateEmitterNr(){
 int llopen(char *port, int role){
     
     int fd = open_serialPort(port);
-    
+    //\if(DEBUG_MODE) printf("Serial Port opened\n");
+
     if (set_costume_conf(fd) == -1)
         return -1;
 

@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv)
 {   
-  /*
+  
   if ( (argc < 2) || ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0) )) {
     printf("Usage: reader\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
     exit(-1);
@@ -12,10 +12,11 @@ int main(int argc, char** argv)
   if(receiveFile(argv[1]) < 0){
       exit(-1);
   }
-  */
+  /*
   byte buf[512];
-
+  activate_debug();
   int fd = llopen(argv[1], RECEIVER);
+  printf("Opened Communication\n");
 
   llread(fd, buf);
   printf("First read\n");
@@ -36,4 +37,6 @@ int main(int argc, char** argv)
   printf("Six read\n");
 
   llclose(fd);
+  deactivate_debug();
+  */
 }

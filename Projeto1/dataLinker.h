@@ -63,6 +63,9 @@ typedef unsigned char byte;
 #define BCC1_POS   3
 #define FLAG2_POS  4
 
+//Maximum size of message
+#define MAX_SIZE 248
+
 // The various types of messages
 enum MessageType{
     SET,

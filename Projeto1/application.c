@@ -5,6 +5,7 @@ int sendFile(char * filename, char *port){
     unsigned int fileLength = 0;
     
     int fd = llopen(port, TRANSMITTER);
+    
     if(fd < 0) return -1;
 
     //getting file length
@@ -51,7 +52,7 @@ int sendControlPacket(int controlType, unsigned int fileLength, char * filename,
     //index 2: Length (tamanho do campo a passar e.g. tamanho do nome do fichero etc)
     //index 3: Value (valor do campo a passar e.g. actual filename)
 
-    byte controlPacket[512];
+    byte controlPacket[MAX_SIZE];
 
     if(controlType == CONTROL_START){
         controlPacket[0] = CONTROL_START;
@@ -79,6 +80,11 @@ int sendControlPacket(int controlType, unsigned int fileLength, char * filename,
     controlPacket[i++] = SECOND_BYTE(fileLength);
     controlPacket[i++] = FIRST_BYTE(fileLength);
 
+    if(i > MAX_SIZE){
+        printf("Control packet is to big!\n");
+        return -1;
+    }
+
     if(llwrite(fd, controlPacket, i) < 0){
         return -1;  
     }
@@ -87,44 +93,46 @@ int sendControlPacket(int controlType, unsigned int fileLength, char * filename,
 }
 
 int sendDataPackets(FILE *file, int fd){
-    byte dataPacket[255];
+    byte dataPacket[MAX_SIZE];
     int sequenceNumber = 0; 
 
     dataPacket[0] = DATA_PACK;
     dataPacket[1] = sequenceNumber++;
-    dataPacket[2] = 0x01;
+    dataPacket[2] = 0x00;
     dataPacket[3] = 0xF4;                   //Será mandado 500 bytes de cada vez
 
     byte buf[1];
     int ret = fread(buf, 1, 1, file), i = 4, size = 1;
-    if(ret != 1 && ret != EOF){
-        printf("Error on reading byte from file\n");
+    if(ret != 1){
+        perror("fread");
         return -1;
     }
     dataPacket[i++] = buf[0]; 
     
-    while (ret != EOF){
+    while (ret == 1){
         //Reading one byte per read
         ret = fread(buf, 1, 1, file);
-        if(ret != 1 && ret != EOF){
-            printf("Error on reading byte from file\n");
+        if(ret != 1) break;
+       /*
+        if(ret != 1){
+            perror("fread");
             return -1;
-        }       
+        }*/       
         dataPacket[i++] = buf[0];
         size++;
 
-        if(size == 248){
+        if(i == (MAX_SIZE - 4)){
             
             if(llwrite(fd, dataPacket, i) == -1) return -1;
             printf("Sent %dº packet\n", sequenceNumber);    
             size = 0;
-            memset(dataPacket, 0, 255);
+            memset(dataPacket, 0, MAX_SIZE);
             
             sequenceNumber = sequenceNumber % 255;
             dataPacket[0] = DATA_PACK;
             dataPacket[1] = sequenceNumber++;
-            dataPacket[2] = 0x01;
-            dataPacket[3] = 0xF4;                   //Será mandado 500 bytes de cada vez
+            dataPacket[2] = 0x00;
+            dataPacket[3] = 0xF4;                   //Será mandado 244 bytes de cada vez
             i = 4;
         }
     }
@@ -137,7 +145,7 @@ int sendDataPackets(FILE *file, int fd){
 
     }
 
-    return 0;
+    return 0;   
 }
 
 int receiveFile(char *port){
@@ -171,7 +179,7 @@ int receiveFile(char *port){
 int readControlPacket(int fd, char* filename){
     //going to call llread
 
-    byte controlPacket[512];
+    byte controlPacket[MAX_SIZE];
     unsigned int size_filename;
     byte size_file[4];
     unsigned int packetSize = 0, has_filename = 0, has_filesize = 0;    
@@ -180,7 +188,7 @@ int readControlPacket(int fd, char* filename){
         printf("Error on reading Start Control Packet\n");
         return -1;
     }
-    
+
     //checks for start control packet
     if(controlPacket[packetSize++] == CONTROL_START){
         printf("Start Control Packet received\n");
@@ -189,16 +197,18 @@ int readControlPacket(int fd, char* filename){
         printf("Error on reading Start Control Packet\n");
         return -1;
     }
+
     while(has_filename == 0 || has_filesize == 0){
         //checks for type of info   
         if(controlPacket[packetSize] == FILE_NAME){
+            printf("Packet Size: %d\n", packetSize);
             printf("Received type of info = FILENAME\n");
             packetSize++;
             //size of filename
             size_filename = controlPacket[packetSize++];
-            
+                
             //reading filename
-            int i = 0;
+            int i = 0; 
             for(; i < size_filename; i++){
                 filename[i] = controlPacket[packetSize++];
             }
@@ -206,7 +216,8 @@ int readControlPacket(int fd, char* filename){
             has_filename = 1;
         }
         else if(controlPacket[packetSize] == FILE_SIZE){
-            printf("Received type of info = FILESIZE\n");
+            printf("Packet Size: %d\n", packetSize);
+            printf("Received type of info = FILESIZE: %x\n", controlPacket[packetSize]);
             packetSize++;
             int j = 0;
             for(; j < 4; j++){
@@ -231,24 +242,23 @@ int readControlPacket(int fd, char* filename){
 
 int readDataPackets(int fd, FILE *file){
 
-    byte dataPacket[512], buf[1];
+    byte dataPacket[MAX_SIZE], buf[1];
     unsigned int size = 0;
     if(llread(fd, dataPacket) < 0) return -1;
     int numP = 1;
     
     while(dataPacket[0] != CONTROL_END && dataPacket[0] != CONTROL_START){
-        size = dataPacket[2] << 8 | dataPacket[3];
-        printf("Size: %d\n", size);
+        size = dataPacket[2] << 8 | dataPacket[3];  
 
         for (int i = 0; i < size; i++){
-            buf[0] = dataPacket[i + 4];
+            buf[0] = (char) dataPacket[i + 4];
             if(fwrite(buf, 1, 1, file) != 1){
                 perror("fwrite");
                 return -1;
             }
         }
         printf("Received %dº packet\n", numP++); 
-        memset(dataPacket, 0, 512);
+        memset(dataPacket, 0, MAX_SIZE);
         if(llread(fd, dataPacket) < 0) return -1;
     }
     return 0;
