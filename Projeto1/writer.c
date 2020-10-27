@@ -1,33 +1,41 @@
 
-#include "dataLinker.h"
+#include "application.h"
 
 int main(int argc, char** argv)
-{   
-    int fd = llopen(argv[1], TRANSMITTER);
-    if (fd < 0){
-        printf("Couldn't establish connection.\n");
-        exit(-1);
-    }
-    printf("Connection established!\n");
-    byte msg[5] = {0x01, 0x7e, 0x7d, 0x02, 0x03};
-    
+{ 
+  /*
+  if ( (argc < 3) || ((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0) )) {
+    printf("Usage: writer\tnserial SerialPort\tfilename \n\tex: nserial /dev/ttyS1 pinguim.gif\n");
+    exit(-1);
+  }
+  
+  if(sendFile(argv[2], argv[1]) < 0){
+      exit(-1);
+  }
+  */
 
-    llwrite(fd, msg, 5);
-    printf("Sent message!\n");
+  byte buf[512] = {0x01, 0x02, 0x03};
 
-    llwrite(fd, msg, 5);
-    printf("Sent message!\n");
+  int fd = llopen(argv[1], RECEIVER);
 
-    llwrite(fd, msg, 5);
-    printf("Sent message!\n");
+  llwrite(fd, buf, 3);
+  printf("First wrote\n");
+  
+  llwrite(fd, buf, 3);
+  printf("Second wrote\n");
+  
+  llwrite(fd, buf, 3);
+  printf("Third wrote\n");
 
+  llwrite(fd, buf, 3);
+  printf("Fourth wrote\n");
 
+  llwrite(fd, buf, 3);
+  printf("Fift wrote\n");
 
-    int ret = llclose(fd);
-    if(ret == -1){
-        printf("Couldn't close connection.\n");
-        exit(-1);
-    }
-    printf("Connection closed!\n");
-    return 0;
+  llwrite(fd, buf, 3);
+  printf("Six wrote\n");
+
+  llclose(fd);
+
 }

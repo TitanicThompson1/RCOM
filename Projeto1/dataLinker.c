@@ -180,8 +180,8 @@ int ReadOneByte(int fd, byte *command){
     return 0;
 }
 
-int ReceiveI(int fd, byte *received_message){
-    
+int ReceiveI(int fd, byte *result){
+    byte received_message[512];
     int current_state = STATE_START;
     byte buf[1];
 
@@ -244,7 +244,7 @@ int ReceiveI(int fd, byte *received_message){
                 current_state = STATE_STOP;
                 received_message[BCC1_POS] = buf[0];                
 
-                int ret = ReceiveIData(fd, received_message);
+                int ret = ReceiveIData(fd, received_message, result);
                 if(ret == -1)
                     return -1;
 
@@ -260,49 +260,55 @@ int ReceiveI(int fd, byte *received_message){
     return 0;
 }
 
-int ReceiveIData(int fd, byte* received_command){
+int ReceiveIData(int fd, byte* received_message, byte *result){
     byte buf[1];
     int currentPos = BCC1_POS + 1, size = 0;
     
-    byte currentXOR = received_command[BCC1_POS], previousByte = 0x00;
+    byte currentXOR = received_message[BCC1_POS], previousByte = 0x00;
 
     ReadOneByte(fd,buf);
-    size++;
     while(buf[0] != FLAG){
         
         //Byte destuffing
         if(buf[0] == ESC){
 
             ReadOneByte(fd,buf);
-            size++;
             if(buf[0] == FLAG_ESC){
-                received_command[currentPos++] = FLAG;
+                received_message[currentPos++] = FLAG;
+                result[size++] = buf[0];
 
             }else if(buf[0] == ESC_ESC){
-                received_command[currentPos++] = ESC;
+                received_message[currentPos++] = ESC;
+                result[size++] = buf[0];
+
             }
 
         }else{
-            received_command[currentPos++] = buf[0];
+            received_message[currentPos++] = buf[0];
+            result[size++] = buf[0];
         }        
         
         if(previousByte != 0x00)
             currentXOR = currentXOR ^ previousByte;
         
-        previousByte = received_command[currentPos - 1];
+        previousByte = received_message[currentPos - 1];
         ReadOneByte(fd,buf);
         size++;
     }
     //buf[0] stores the FLAG
-    received_command[currentPos] = buf[0];
+    received_message[currentPos] = buf[0];
+    result[size++] = buf[0];
+
 
     //After the cycle ends, the BCC2 is stored in previousByte
-    if(currentXOR != previousByte)
+    if(currentXOR != previousByte){
+        printf("BCC2 doesn't match\n");
         return -1;
+    }
     if(DEBUG_MODE) printf("BCC2 received: %x\n", previousByte);
     if(DEBUG_MODE) printf("Flag read: %x\n", buf[0]);
 
-    return currentPos + 1;
+    return size;
 }
 
 int send_set_message(int fd){
@@ -325,7 +331,13 @@ int send_set_message(int fd){
 
 int send_i_message(int fd, byte *msg, int n){    
     int res;
-    byte command[255];
+    if( n > 506){
+        printf("Error: Data size to big to send\n");
+        return -1;
+    }
+    
+    byte command[512];
+    
 
     command[0] = FLAG;
     command[1] = A;
@@ -338,7 +350,7 @@ int send_i_message(int fd, byte *msg, int n){
 
     int i, j;
  
-    printf("Size: %d\n", n);
+    if(DEBUG_MODE) printf("Size: %d\n", n);
 
     for(i = 4, j=0; j < n; i++, j++){      //i iterates over command array. j iterates over msg array
         
@@ -359,12 +371,12 @@ int send_i_message(int fd, byte *msg, int n){
 
     }
     
-    command[i] = currentXOR;                    //BCC2
-    command[++i] = FLAG;
+    command[i++] = currentXOR;                    //BCC2
+    command[i++] = FLAG;
 
-    res = write(fd, command, i + 1);
+    res = write(fd, command, i);
     if(DEBUG_MODE) printf("%d bytes written\n", res);
-    print_message("I command", command, i + 1);
+    if(DEBUG_MODE) print_message("I command", command, i );
 
     return res;
 }
@@ -502,8 +514,10 @@ int llopen(char *port, int role){
 
     if(role == TRANSMITTER)
         res = open_emitter(fd);
+
     else if(role == RECEIVER){
         res = open_receiver(fd);
+
     }else{
         printf("Unkwoned role.\n");
         res = -1;
@@ -587,6 +601,7 @@ int open_emitter(int fd){
             break;
         }
     }
+    alarm(0);
 
     if(n_alarm ==3){
         return -1;
@@ -636,10 +651,6 @@ int llclose(int fd){
 int close_emitter(int fd){
     byte received_message[5];
 
-    signal(SIGALRM, count);
-    siginterrupt(SIGALRM, 1);
-    
-    
     while(n_alarm < 3){
 
         send_disc_message(fd);
@@ -657,6 +668,7 @@ int close_emitter(int fd){
             break;
         }
     }
+    alarm(0);
 
     if(n_alarm ==3){
         printf("Couldn't close connection.\n");
@@ -691,29 +703,33 @@ int close_receiver(int fd){
 
 int llwrite(int fd, byte* buffer, int length){
     int numWrittenCharacters;
-
-    signal(SIGALRM, count);
-    siginterrupt(SIGALRM, 1);
-
-    byte received_message[255];
+    
+    byte received_message[10];
     enum MessageType ret;
 
     while(n_alarm < 3){
         //send frame
         numWrittenCharacters = send_i_message(fd, buffer, length);
+        if(numWrittenCharacters < 0) {
+            printf("Error in sendinf I message\n");
+            return -1;
+        }
+        alarm(3);
+
         ret = ReceiveMessage(fd,received_message);
         if(ret == REJ){
-            printf("Received REJ message.\n");
+            if(DEBUG_MODE) printf("Received REJ message.\n");
 
         }else if(ret == TIME_OUT){
             printf("Time_out occurred.\n");
 
-        }else if(ret == RR){
-            printf("Received RR message. \n");
+        }else if(ret == RR){ 
+            alarm(0);
+            if(DEBUG_MODE) printf("Received RR message. \n");
             break;  
         }
     }
-
+   
     if(n_alarm ==3){
         printf("Couldn't establish connection.\n");
         return -1;
@@ -721,39 +737,22 @@ int llwrite(int fd, byte* buffer, int length){
     
     
     return numWrittenCharacters;  //returns the number of written characters
-    
-     
 }
 
 int llread(int fd, byte* buffer){
-    /*
-    int currentState;
-    int readLength = 0;
-    char readByte;
 
     
-    while(currentState != STATE_STOP){
-        if(read(fd, &readByte, 1) == 0){
-            currentState = ReceiveI(fd, readByte);  //reads frame and calls ReceiveIData that does the destuffing
-            buffer[readLength++] = readByte;        //stores read frame inside buffer
-        }
-        else {
-            printf("Error in llread : reading byte");
-            return -1; //error
-        }
-    }
-    return readLength;  //returns the number of read characters
-    */
-
    int ret = ReceiveI(fd, buffer);
-   if(ret == -1){
-       printf("Error in receiving message\n");
-       send_rej_message(fd);
-       return -1;
-   }else{
-       printf("Received Message!\n");
-       send_rr_message(fd);
-       return ret;
+   while(1){
+    if(ret == -1){
+        printf("Error in receiving message\n");
+        send_rej_message(fd);
+        ret = ReceiveI(fd, buffer);
+    }else{
+        if(DEBUG_MODE) printf("Received Message!\n");
+        send_rr_message(fd);
+        return ret;
+    }
    }
    
 }   

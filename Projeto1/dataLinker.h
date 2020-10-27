@@ -114,7 +114,7 @@ enum MessageType ReceiveMessage(int fd, byte *received_message);
 /**
  * Receives the data part of I message, from file fd. It puts the message in the correct position in received_command array.
 */
-int ReceiveIData(int fd, byte* received_command);
+int ReceiveIData(int fd, byte* received_command, byte* result);
 
 /**
  * Reads one byte from file fd and puts it on command.
@@ -192,7 +192,7 @@ int llclose(int fd);
 /**
 * Creates frame to send to receiver. 
 * Does the byte stuffing by calling send_i_message.
-* Returns the length of characters written .
+* Returns the length of characters written, or -1 in case of error .
 */
 int llwrite(int fd, byte* buffer, int length);
 

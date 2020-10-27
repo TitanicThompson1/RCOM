@@ -5,14 +5,17 @@ obj = $(src:.c=.o)
 
 all: reader writer
 
-reader: reader.c dataLinker.o dataLinker.h 
-	$(CC) $(CFLAGS) -o reader dataLinker.o reader.c
+reader: reader.c application.o
+	$(CC) $(CFLAGS) -o reader application.o dataLinker.o reader.c
 
-writer: writer.c dataLinker.o dataLinker.h 
-	$(CC) $(CFLAGS) -o writer dataLinker.o writer.c
+writer: writer.c application.o 
+	$(CC) $(CFLAGS) -o writer application.o dataLinker.o writer.c
 
-dataLynker.o: dataLinker.c dataLinker.h
-	gcc -c dataLinker.c
+application.o: application.c application.h dataLinker.o
+	$(CC) $(CFLAGS) -c application.c dataLinker.o
+
+dataLinker.o: dataLinker.c dataLinker.h
+	$(CC) $(CFLAGS) -c dataLinker.c
 
 .PHONY: clean
 clean:
