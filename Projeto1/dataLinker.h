@@ -63,8 +63,11 @@ typedef unsigned char byte;
 #define BCC1_POS   3
 #define FLAG2_POS  4
 
-//Maximum size of message
-#define MAX_SIZE 248
+//Maximum size of frame of Data Lynker
+#define FRAME_SIZE 2048
+
+//Maximum size of data that can be send
+#define MAX_DATA_D (FRAME_SIZE - 6) / 2
 
 // The various types of messages
 enum MessageType{
@@ -86,14 +89,14 @@ enum MessageType{
  * @brief Activates the debug mode(= printf throughout the code)
  * 
  */
-void activate_debug(void);
+void activate_debug_d(void);
 
 
 /**
  * @brief Deactivates the debug mode
  * 
  */
-void deactivate_debug(void);
+void deactivate_debug_d(void);
 
 
 /**

@@ -14,10 +14,10 @@ void count(){
     n_alarm++;
 }
 
-void activate_debug(void){
+void activate_debug_d(void){
     DEBUG_MODE = 1;
 }
-void deactivate_debug(void){
+void deactivate_debug_d(void){
     DEBUG_MODE = 0;
 }
 
@@ -181,7 +181,7 @@ int ReadOneByte(int fd, byte *command){
 }
 
 int ReceiveI(int fd, byte *result){
-    byte received_message[512];
+    byte received_message[FRAME_SIZE];
     int current_state = STATE_START;
     byte buf[1];
 
@@ -277,7 +277,7 @@ int ReceiveIData(int fd, byte* received_message, byte *result){
             ReadOneByte(fd,buf);
             if(buf[0] == FLAG_ESC){
                 received_message[currentPos++] = FLAG;
-                result[size++] =FLAG;
+                result[size++] = FLAG;
 
             }else if(buf[0] == ESC_ESC){
                 received_message[currentPos++] = ESC;
@@ -332,14 +332,13 @@ int send_set_message(int fd){
 
 int send_i_message(int fd, byte *msg, int n){    
     int res;
-    if( n > MAX_SIZE){
+    if(n > MAX_DATA_D){
         printf("Error: Data size to big to send\n");
         return -1;
     }
     
-    byte command[512];
+    byte command[FRAME_SIZE];
     
-
     command[0] = FLAG;
     command[1] = A;
     
@@ -351,9 +350,7 @@ int send_i_message(int fd, byte *msg, int n){
 
     int i, j;
  
-    if(DEBUG_MODE) printf("Size: %d\n", n);
-
-    for(i = 4, j=0; j < n; i++, j++){      //i iterates over command array. j iterates over msg array
+    for(i = 4, j = 0; j < n; i++, j++){      //i iterates over command array. j iterates over msg array
         
         //Byte Stuffing
         if(msg[j] == FLAG){                     
@@ -371,12 +368,24 @@ int send_i_message(int fd, byte *msg, int n){
         currentXOR = currentXOR ^ msg[j];
 
     }
-    
-    command[i++] = currentXOR;                    //BCC2
+
+    //Byte Stuffing     BCC2
+    if(currentXOR == FLAG){                     
+        
+        command[i++] = ESC;
+        command[i++] = FLAG_ESC;
+    }else if(currentXOR == ESC){
+        
+        command[i++] = ESC;
+        command[i++] = ESC_ESC;
+    }else {
+
+        command[i++] = currentXOR;            
+    }                    
     command[i++] = FLAG;
 
     res = write(fd, command, i);    
-    if(DEBUG_MODE) print_message("I command", command, i );
+    if(DEBUG_MODE) print_message("I command: ", command, i);
 
     return res;
 }
@@ -650,7 +659,7 @@ int llclose(int fd){
 }
 
 int close_emitter(int fd){
-    byte received_message[5];
+    byte received_message[10];
 
     while(n_alarm < 3){
 
@@ -679,7 +688,7 @@ int close_emitter(int fd){
 }
 
 int close_receiver(int fd){
-    byte received_message[5];
+    byte received_message[10];
     
     while(1){
 
@@ -719,6 +728,7 @@ int llwrite(int fd, byte* buffer, int length){
 
         ret = ReceiveMessage(fd,received_message);
         if(ret == REJ){
+            alarm(0);
             if(DEBUG_MODE) printf("Received REJ message.\n");
 
         }else if(ret == TIME_OUT){
@@ -742,13 +752,13 @@ int llwrite(int fd, byte* buffer, int length){
 
 int llread(int fd, byte* buffer){
 
-    
    int ret = ReceiveI(fd, buffer);
    while(1){
     if(ret == -1){
         printf("Error in receiving message\n");
         send_rej_message(fd);
         ret = ReceiveI(fd, buffer);
+        
     }else{
         if(DEBUG_MODE) printf("Received Message!\n");
         send_rr_message(fd);

@@ -10,10 +10,24 @@
 #define FILE_NAME 0x01
 #define FILE_SIZE 0x00
 
-#define FIRST_BYTE(x) (byte)((x << 24) >> 24)
-#define SECOND_BYTE(x) (byte)((x << 16) >> 24)
-#define THIRD_BYTE(x)  (byte)((x << 8) >> 24)
-#define FOURTH_BYTE(x) (byte)(x >> 24)
+#define FIRST_BYTE(x) (x & 0xFF)
+#define SECOND_BYTE(x) (x >> 8 & 0xFF)
+#define THIRD_BYTE(x)  (x >> 16 & 0xFF)
+#define FOURTH_BYTE(x) (x >> 24 & 0xFF)
+
+/**
+ * @brief Activates the debug mode (= printf throughout the code)
+ * 
+ */
+void activate_debug_a(void);
+
+
+/**
+ * @brief Deactivates the debug mode
+ * 
+ */
+void deactivate_debug_a(void);
+
 
 /*
 * Responsible for calling the necessary functions to create the control packets and data packets, and sending them.

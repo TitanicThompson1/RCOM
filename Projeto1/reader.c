@@ -9,34 +9,10 @@ int main(int argc, char** argv)
     exit(-1);
   }
 
+  printf("Receiving file...\n");
   if(receiveFile(argv[1]) < 0){
       exit(-1);
   }
-  /*
-  byte buf[512];
-  activate_debug();
-  int fd = llopen(argv[1], RECEIVER);
-  printf("Opened Communication\n");
 
-  llread(fd, buf);
-  printf("First read\n");
-  
-  llread(fd, buf);
-  printf("Second read\n");
-  
-  llread(fd, buf);
-  printf("Third read\n");
-
-  llread(fd, buf);
-  printf("Fourth read\n");
-
-  llread(fd, buf);
-  printf("Fift read\n");
-
-  llread(fd, buf);
-  printf("Six read\n");
-
-  llclose(fd);
-  deactivate_debug();
-  */
+  printf("Done!\n");
 }

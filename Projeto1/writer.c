@@ -9,36 +9,9 @@ int main(int argc, char** argv)
     exit(-1);
   }
   
+  printf("Sending file...\n");
   if(sendFile(argv[2], argv[1]) < 0){
       exit(-1);
   }
-  
-/*
-  byte buf[512] = {0x01, 0x02, 0x03};
-
-  activate_debug();
-  int fd = llopen(argv[1], RECEIVER); 
-  printf("Opened Communication\n");
-
-  llwrite(fd, buf, 3);
-  printf("First wrote\n");
-  
-  llwrite(fd, buf, 3);
-  printf("Second wrote\n");
-  
-  llwrite(fd, buf, 3);
-  printf("Third wrote\n");
-
-  llwrite(fd, buf, 3);
-  printf("Fourth wrote\n");
-
-  llwrite(fd, buf, 3);
-  printf("Fift wrote\n");
-
-  llwrite(fd, buf, 3);
-  printf("Six wrote\n");
-
-  llclose(fd);
-  printf("Opened Communication\n");
-  deactivate_debug();*/
+  printf("Done!\n");
 }
