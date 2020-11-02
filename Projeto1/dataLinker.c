@@ -3,11 +3,12 @@
 int DEBUG_MODE = 0;                     //0 indicates inactive. 1 is active. Debug mode does some extra printf
 int ROLE = -1;                          //0 for TRANSMITER, 1 for RECEIVER
 
-int receiverNs = 0, emitterNr = 1;      //expected Ns by the receiver and expected Nr by the emitter
-int lastNs = 1, lastNr = 0;             //las Ns sent by emitter and last Nr sent by receiver
+int emitterNr = 1, receiverNs = 0;      //expected Ns by the receiver and expected Nr by the emitter
+int currentNs = 0, currentNr = 1;       //Ns to be sent by emitter and Nr to be sent by receiver
 
-int timeout_flag = 0, n_alarm = 0;
+int timeout_flag = 0, n_alarm = 0, first = 1, size_previous = 0;
 struct termios oldtio;
+byte previous_msg[MAX_DATA_D];
 
 void count(){
     timeout_flag = 1;
@@ -95,6 +96,13 @@ enum MessageType ReceiveMessage(int fd, byte *received_message){
                 received_message[C_POS] = buf[0];
                 ret = REJ;
 
+            }else if(buf[0] == C_RR(emitterNr == 1 ? 0 : 1)){
+                
+                if(DEBUG_MODE) printf("C_RR read: %x\n", buf[0]);
+                current_state = STATE_C;
+                received_message[C_POS] = buf[0];
+                ret = RR_REPEATED;
+
             }else if (buf[0] == C_DISC){                    //receiving DISC message
 
                 if(DEBUG_MODE) printf("C_DISC read: %x\n", buf[0]);
@@ -160,8 +168,7 @@ enum MessageType ReceiveMessage(int fd, byte *received_message){
             }
         }
     }
-    if(ret == REJ || ret == RR)
-        updateEmitterNr();
+    
     return ret;
 
 }
@@ -181,6 +188,7 @@ int ReadOneByte(int fd, byte *command){
 }
 
 int ReceiveI(int fd, byte *result){
+
     byte received_message[FRAME_SIZE];
     int current_state = STATE_START;
     byte buf[1];
@@ -227,8 +235,15 @@ int ReceiveI(int fd, byte *result){
                 if(DEBUG_MODE) printf("C_I read: %x\n", buf[0]);
                 current_state = STATE_C;
                 received_message[C_POS] = buf[0];
+
+            }else if (buf[0] == C_I(receiverNs == 1 ? 0 : 1)){
+
+                if(DEBUG_MODE) printf("Received same message\n");
+                return -2;
+
+
             }else{
-                if(DEBUG_MODE) printf("Error in reading C_. Received %x\n", buf[0]);
+                if(DEBUG_MODE) printf("Error in reading C_I. Received %x\n", buf[0]);
                 current_state = STATE_START;
             }
 
@@ -248,7 +263,6 @@ int ReceiveI(int fd, byte *result){
                 if(ret == -1)
                     return -1;
 
-                updateReceiverNs();                
                 return ret;
 
             }else{
@@ -341,9 +355,7 @@ int send_i_message(int fd, byte *msg, int n){
     
     command[0] = FLAG;
     command[1] = A;
-    
-    int currNs = updateLastNs();
-    command[2] = C_I(currNs);
+    command[2] = C_I(currentNs);
     command[3] = BCC1(command[2]);
     
     byte currentXOR = command[3];
@@ -431,8 +443,7 @@ int send_rr_message(int fd){
 
     rr_reply[0] = FLAG;
     rr_reply[1] = A;
-    int updated_nr = updateLastNr();
-    rr_reply[2] = C_RR(updated_nr);
+    rr_reply[2] = C_RR(currentNr);
     rr_reply[3] = BCC1(rr_reply[2]);
     rr_reply[4] = FLAG;
 
@@ -450,8 +461,7 @@ int send_rej_message(int fd){
 
     rej_reply[0] = FLAG;
     rej_reply[1] = A;
-    int updated_nr = updateLastNr();
-    rej_reply[2] = C_REJ(updated_nr);
+    rej_reply[2] = C_REJ(currentNr);
     rej_reply[3] = BCC1(rej_reply[2]);
     rej_reply[4] = FLAG;
 
@@ -475,25 +485,19 @@ void print_message(char *before, byte *message, int size){
     printf("\n");
 }
 
-int updateLastNs(){
-    int currentNs;
-    if(lastNs == 0)
+void updateCurrentNs(){
+   
+    if(currentNs == 0)
         currentNs = 1;
     else
         currentNs = 0;
-
-    lastNs = currentNs;
-    return currentNs;
 }
 
-int updateLastNr(){
-    int currentNr;
-    if(lastNr == 0)
+void updateCurrentNr(){
+    if(currentNr == 0)
         currentNr = 1;
     else
         currentNr = 0;
-    lastNr = currentNr;
-    return currentNr;
 }
 
 void updateReceiverNs(){
@@ -735,9 +739,16 @@ int llwrite(int fd, byte* buffer, int length){
             printf("Time_out occurred.\n");
 
         }else if(ret == RR){ 
+            
             alarm(0);
             if(DEBUG_MODE) printf("Received RR message. \n");
-            break;  
+            break;
+        
+        }else if(ret == RR_REPEATED){
+            
+            alarm(0);
+            if(DEBUG_MODE) printf("Received RR_REPEATED message. \n");
+
         }
     }
    
@@ -746,24 +757,55 @@ int llwrite(int fd, byte* buffer, int length){
         return -1;
     }
     
-    
+    updateCurrentNs();
+    updateEmitterNr();
     return numWrittenCharacters;  //returns the number of written characters
 }
 
 int llread(int fd, byte* buffer){
 
-   int ret = ReceiveI(fd, buffer);
-   while(1){
-    if(ret == -1){
-        printf("Error in receiving message\n");
-        send_rej_message(fd);
-        ret = ReceiveI(fd, buffer);
+    int ret = ReceiveI(fd, buffer);
+    while(1){
+        if(ret == -1){
+            printf("Error in receiving message\n");
+            send_rej_message(fd);
+            ret = ReceiveI(fd, buffer);
+          
+        }else if(ret == -2){
+            send_rr_message(fd);
+            ret = ReceiveI(fd, buffer);
+            
+        }else{
+            if(DEBUG_MODE) printf("Received Message!\n");
+            send_rr_message(fd);
+            /*
+            if(first == 1){
+                copy_arr(previous_msg, buffer);
+                size_previous = ret;
+                first = 0;
+            }else if(ret == size_previous && compare(previous_msg, buffer) == 0){                   // The message is repeted
+
+            }*/
+            updateCurrentNr();
+            updateReceiverNs();
+            return ret;
+        }
         
-    }else{
-        if(DEBUG_MODE) printf("Received Message!\n");
-        send_rr_message(fd);
-        return ret;
     }
-   }
    
-}   
+}
+/*
+int compare(byte *arr1, byte *arr2, int n){
+    for(int i = 0; i < n; i++){
+        if(arr1[i] != arr2[i]) return -1;
+    }
+    return 0;
+}
+
+void copy_arr(byte *copy, byte *to_copy, int n){
+    for(int i = 0; i < n; i++){
+        copy[i] = to_copy[i];
+    }
+}
+*/
+

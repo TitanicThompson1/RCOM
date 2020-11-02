@@ -64,7 +64,7 @@ typedef unsigned char byte;
 #define FLAG2_POS  4
 
 //Maximum size of frame of Data Lynker
-#define FRAME_SIZE 2048
+#define FRAME_SIZE 16384
 
 //Maximum size of data that can be send
 #define MAX_DATA_D (FRAME_SIZE - 6) / 2
@@ -76,6 +76,7 @@ enum MessageType{
     I,
     DISC,
     RR,
+    RR_REPEATED,
     REJ,
     TIME_OUT,
     ERROR
@@ -166,12 +167,12 @@ void print_message(char *before, byte *message, int size);
 /**
  * Updates Ns and returns the current one
  */
-int updateLastNs();
+void updateCurrentNs();
 
 /**
  * Updates Nr and returns the current one
  */
-int updateLastNr();
+void updateCurrentNr();
 
 
 void updateReceiverNs();
@@ -247,5 +248,7 @@ int close_emitter(int fd);
  * This opens the communication.
  */
 int close_receiver(int fd);
+
+//int compare(byte *arr1, byte *arr2);
 
 #endif
