@@ -597,10 +597,10 @@ int open_emitter(int fd){
     siginterrupt(SIGALRM, 1);
     
      
-    while(n_alarm < 3){
+    while(n_alarm < MAX_TIMEOUT){
 
         send_set_message(fd);   
-        alarm(3);
+        alarm(TIMEOUT_SECS);
         
         enum MessageType response = ReceiveMessage(fd, received_message);
         
@@ -617,7 +617,7 @@ int open_emitter(int fd){
     }
     alarm(0);
 
-    if(n_alarm ==3){
+    if(n_alarm == MAX_TIMEOUT){
         return -1;
     }
     return 0;
@@ -665,10 +665,10 @@ int llclose(int fd){
 int close_emitter(int fd){
     byte received_message[10];
 
-    while(n_alarm < 3){
+    while(n_alarm < MAX_TIMEOUT){
 
         send_disc_message(fd);
-        alarm(3);
+        alarm(TIMEOUT_SECS);
         enum MessageType response = ReceiveMessage(fd, received_message);
         
         if(response == TIME_OUT){
@@ -684,7 +684,7 @@ int close_emitter(int fd){
     }
     alarm(0);
 
-    if(n_alarm ==3){
+    if(n_alarm == MAX_TIMEOUT){
         printf("Couldn't close connection.\n");
         return -1;
     }
@@ -721,14 +721,14 @@ int llwrite(int fd, byte* buffer, int length){
     byte received_message[10];
     enum MessageType ret;
 
-    while(n_alarm < 3){
+    while(n_alarm < MAX_TIMEOUT){
         //send frame
         numWrittenCharacters = send_i_message(fd, buffer, length);
         if(numWrittenCharacters < 0) {
             printf("Error in sendinf I message\n");
             return -1;
         }
-        alarm(3);
+        alarm(TIMEOUT_SECS);
 
         ret = ReceiveMessage(fd,received_message);
         if(ret == REJ){
@@ -752,7 +752,7 @@ int llwrite(int fd, byte* buffer, int length){
         }
     }
    
-    if(n_alarm ==3){
+    if(n_alarm == MAX_TIMEOUT){
         printf("Couldn't establish connection.\n");
         return -1;
     }

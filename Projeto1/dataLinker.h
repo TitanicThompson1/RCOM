@@ -82,9 +82,14 @@ enum MessageType{
     ERROR
 };
 
-//Role of computer
+// Role of computer
 #define TRANSMITTER 0
 #define RECEIVER 1
+
+// Timeout
+#define TIMEOUT_SECS 3
+#define MAX_TIMEOUT 3
+
 
 /**
  * @brief Activates the debug mode(= printf throughout the code)

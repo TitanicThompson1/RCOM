@@ -85,17 +85,18 @@ int sendControlPacket(int controlType, unsigned int fileLength, char * filename,
 
     controlPacket[i++] = FILE_NAME;               //Sending filename
     int size_filename = strlen(filename);
-    controlPacket[i++] = size_filename;
     
+    if(size_filename + 9 > MAX_DATA_D){
+        printf("Control packet is to big!\n");
+        return -1;
+    }
+
+    controlPacket[i++] = size_filename; 
     int j=0;
     for (; j < size_filename; i++, j++){
         controlPacket[i] = (byte)filename[j];
     }
 
-    if(i > MAX_DATA_D){
-        printf("Control packet is to big!\n");
-        return -1;
-    }
 
     if(llwrite(fd, controlPacket, i) < 0){
         return -1;  
