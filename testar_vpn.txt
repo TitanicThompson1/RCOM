@@ -1,0 +1,7 @@
+Terminal1: ssh netedu@192.168.109.11
+Passowrd: torvalds
+
+Terminal2: ssh -t netedu@192.168.109.11 ssh root@172.16.1.13
+Password1: torvalds
+Password2: bill9gates
+
