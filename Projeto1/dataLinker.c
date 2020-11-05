@@ -654,10 +654,11 @@ int llclose(int fd){
     if(res == -1)
         return res;
 
+    sleep(1);
+
     if(reset_serialPort_conf(fd, oldtio) == -1)
         return -1;
-    
-    sleep(1);
+
     
     close(fd);
     return 0;
