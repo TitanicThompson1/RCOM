@@ -656,7 +656,9 @@ int llclose(int fd){
 
     if(reset_serialPort_conf(fd, oldtio) == -1)
         return -1;
-
+    
+    sleep(1);
+    
     close(fd);
     return 0;
     
@@ -794,18 +796,5 @@ int llread(int fd, byte* buffer){
     }
    
 }
-/*
-int compare(byte *arr1, byte *arr2, int n){
-    for(int i = 0; i < n; i++){
-        if(arr1[i] != arr2[i]) return -1;
-    }
-    return 0;
-}
 
-void copy_arr(byte *copy, byte *to_copy, int n){
-    for(int i = 0; i < n; i++){
-        copy[i] = to_copy[i];
-    }
-}
-*/
 
