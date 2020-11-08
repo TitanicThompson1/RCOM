@@ -609,6 +609,7 @@ int open_emitter(int fd){
 
         }else if(response != UA){
             printf("Received message from wrong type.\n");
+            n_alarm = 0;
             continue;
 
         }else {
@@ -620,6 +621,7 @@ int open_emitter(int fd){
     if(n_alarm == MAX_TIMEOUT){
         return -1;
     }
+    n_alarm = 0;
     return 0;
 }
 
@@ -679,6 +681,7 @@ int close_emitter(int fd){
 
         }else if(response != DISC){
             printf("Received message from wrong type.\n");
+            n_alarm = 0;
             continue;
         }else{
             send_ua_message(fd);
@@ -691,6 +694,7 @@ int close_emitter(int fd){
         printf("Couldn't close connection.\n");
         return -1;
     }
+    n_alarm = 0;
     return 0;
 }
 
@@ -737,6 +741,7 @@ int llwrite(int fd, byte* buffer, int length){
         if(ret == REJ){
             alarm(0);
             if(DEBUG_MODE) printf("Received REJ message.\n");
+            n_alarm = 0;
 
         }else if(ret == TIME_OUT){
             printf("Time_out occurred.\n");
@@ -751,7 +756,7 @@ int llwrite(int fd, byte* buffer, int length){
             
             alarm(0);
             if(DEBUG_MODE) printf("Received RR_REPEATED message. \n");
-
+            break;
         }
     }
    
@@ -759,7 +764,8 @@ int llwrite(int fd, byte* buffer, int length){
         printf("Couldn't establish connection.\n");
         return -1;
     }
-    
+    n_alarm = 0;
+
     updateCurrentNs();
     updateEmitterNr();
     return numWrittenCharacters;  //returns the number of written characters
