@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 typedef unsigned char byte;
 
@@ -64,7 +65,7 @@ typedef unsigned char byte;
 #define FLAG2_POS  4
 
 //Maximum size of frame of Data Lynker
-#define FRAME_SIZE 16384
+#define FRAME_SIZE 126
 
 //Maximum size of data that can be send
 #define MAX_DATA_D (FRAME_SIZE - 6) / 2

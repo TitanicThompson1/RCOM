@@ -1,4 +1,5 @@
 #include "dataLinker.h"
+#define DELAY 3
 
 int DEBUG_MODE = 0;                     //0 indicates inactive. 1 is active. Debug mode does some extra printf
 int ROLE = -1;                          //0 for TRANSMITER, 1 for RECEIVER
@@ -27,14 +28,17 @@ enum MessageType ReceiveMessage(int fd, byte *received_message){
     int current_state = STATE_START;
     enum MessageType ret;
     byte buf[1];
-
+    
     while(current_state != STATE_STOP){
+        
+
         int ROBres = ReadOneByte(fd, buf);
         if(ROBres == -2){
             return TIME_OUT;
         }else if(ROBres == -1){
             return ERROR;
         }
+      
 
         if(current_state == STATE_START){
 
@@ -192,13 +196,13 @@ int ReceiveI(int fd, byte *result){
     byte received_message[FRAME_SIZE];
     int current_state = STATE_START;
     byte buf[1];
-
+       
     while(current_state != STATE_STOP){
 
         if(ReadOneByte(fd, buf)){
             return -1;
         }
-
+       
         if(current_state == STATE_START){
 
             if(buf[0] != FLAG){
@@ -733,10 +737,12 @@ int llwrite(int fd, byte* buffer, int length){
         }
         alarm(TIMEOUT_SECS);
 
+        usleep(DELAY * 1000);  // 1ms
         ret = ReceiveMessage(fd,received_message);
         if(ret == REJ){
             alarm(0);
             if(DEBUG_MODE) printf("Received REJ message.\n");
+            n_alarm = 0;
 
         }else if(ret == TIME_OUT){
             printf("Time_out occurred.\n");
@@ -751,7 +757,7 @@ int llwrite(int fd, byte* buffer, int length){
             
             alarm(0);
             if(DEBUG_MODE) printf("Received RR_REPEATED message. \n");
-
+            break;
         }
     }
    
@@ -759,6 +765,7 @@ int llwrite(int fd, byte* buffer, int length){
         printf("Couldn't establish connection.\n");
         return -1;
     }
+    n_alarm = 0;
     
     updateCurrentNs();
     updateEmitterNr();
@@ -767,28 +774,27 @@ int llwrite(int fd, byte* buffer, int length){
 
 int llread(int fd, byte* buffer){
 
+    usleep(DELAY * 1000);  // 1ms
     int ret = ReceiveI(fd, buffer);
+    
     while(1){
+        
         if(ret == -1){
             printf("Error in receiving message\n");
-            send_rej_message(fd);
+            send_rej_message(fd); 
+            usleep(DELAY * 1000);  // 1ms  
             ret = ReceiveI(fd, buffer);
           
         }else if(ret == -2){
             send_rr_message(fd);
+            usleep(DELAY * 1000);  // 1ms
             ret = ReceiveI(fd, buffer);
             
         }else{
             if(DEBUG_MODE) printf("Received Message!\n");
             send_rr_message(fd);
-            /*
-            if(first == 1){
-                copy_arr(previous_msg, buffer);
-                size_previous = ret;
-                first = 0;
-            }else if(ret == size_previous && compare(previous_msg, buffer) == 0){                   // The message is repeted
+   
 
-            }*/
             updateCurrentNr();
             updateReceiverNs();
             return ret;
