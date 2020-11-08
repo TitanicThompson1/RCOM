@@ -14,7 +14,7 @@
 
 typedef unsigned char byte;
 
-#define BAUDRATE B9600
+#define BAUDRATE B38400
 
 
 //Common message parts
@@ -65,7 +65,7 @@ typedef unsigned char byte;
 #define FLAG2_POS  4
 
 //Maximum size of frame of Data Lynker
-#define FRAME_SIZE 126
+#define FRAME_SIZE 1024
 
 //Maximum size of data that can be send
 #define MAX_DATA_D (FRAME_SIZE - 6) / 2
