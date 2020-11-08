@@ -14,7 +14,7 @@
 
 typedef unsigned char byte;
 
-#define BAUDRATE B115200
+#define BAUDRATE B19200
 
 
 //Common message parts

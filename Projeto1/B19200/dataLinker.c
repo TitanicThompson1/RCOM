@@ -1,5 +1,4 @@
 #include "dataLinker.h"
-#define DELAY 1
 
 int DEBUG_MODE = 0;                     //0 indicates inactive. 1 is active. Debug mode does some extra printf
 int ROLE = -1;                          //0 for TRANSMITER, 1 for RECEIVER
@@ -737,7 +736,6 @@ int llwrite(int fd, byte* buffer, int length){
         }
         alarm(TIMEOUT_SECS);
 
-        usleep(DELAY * 1000);  // 1ms
         ret = ReceiveMessage(fd,received_message);
         if(ret == REJ){
             alarm(0);
@@ -774,7 +772,7 @@ int llwrite(int fd, byte* buffer, int length){
 
 int llread(int fd, byte* buffer){
 
-    usleep(DELAY * 1000);  // 1ms
+
     int ret = ReceiveI(fd, buffer);
     
     while(1){
@@ -782,12 +780,12 @@ int llread(int fd, byte* buffer){
         if(ret == -1){
             printf("Error in receiving message\n");
             send_rej_message(fd); 
-            usleep(DELAY * 1000);  // 1ms  
+         
             ret = ReceiveI(fd, buffer);
           
         }else if(ret == -2){
             send_rr_message(fd);
-            usleep(DELAY * 1000);  // 1ms
+          
             ret = ReceiveI(fd, buffer);
             
         }else{
