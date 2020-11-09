@@ -12,23 +12,19 @@ int main(int argc, char** argv)
   }
   
   printf("Sending file...\n");
-  FILE *log;
-  log = fopen("writerLOG.txt", "w");
-  clock_t start, end;
-  double cpu_time_used;
-     
-  start = clock();
-     
+  
+  struct timespec startTime;
+  clock_gettime(CLOCK_REALTIME, &startTime);
 
   if(sendFile(argv[2], argv[1]) < 0){
       exit(-1);
   }
-
-  end = clock();
-  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-
-  fwrite("Time: ", 1, 6, log);
-  fprintf(log,"%f", cpu_time_used);
+  
+  struct timespec endTime;
+  clock_gettime(CLOCK_REALTIME, &endTime);
+  double sTime = startTime.tv_sec + startTime.tv_nsec * 1e-9;
+  double eTime = endTime.tv_sec + endTime.tv_nsec * 1e-9;
+  printf("-Time Passed: %.6lf-\n", eTime - sTime);
   printf("Done!\n");
-  fclose(log);
+
 }
