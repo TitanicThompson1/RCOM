@@ -64,7 +64,7 @@ typedef unsigned char byte;
 #define FLAG2_POS  4
 
 //Maximum size of frame of Data Lynker
-#define FRAME_SIZE 16384
+#define FRAME_SIZE 128
 
 //Maximum size of data that can be send
 #define MAX_DATA_D (FRAME_SIZE - 6) / 2
