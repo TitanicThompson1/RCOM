@@ -12,23 +12,11 @@ int main(int argc, char** argv)
     exit(-1);
   }
     
-  
-
-  FILE *log;
-  log = fopen("writerLOG.txt", "w");
-  clock_t start, end;
-  double cpu_time_used;
-     
-  start = clock();
-
+  printf("Receiving file...\n");
   if(receiveFile(argv[1]) < 0){
       exit(-1);
   }
-  end = clock();
-  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-
-  fwrite("Time: ", 1, 6, log);
-  fprintf(log,"%f", cpu_time_used);
+  
   printf("Done!\n");
-  fclose(log);
+  
 }

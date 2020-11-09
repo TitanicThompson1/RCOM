@@ -1,4 +1,5 @@
 #include "dataLinker.h"
+#define ERRORP 3
 
 int DEBUG_MODE = 0;                     //0 indicates inactive. 1 is active. Debug mode does some extra printf
 int ROLE = -1;                          //0 for TRANSMITER, 1 for RECEIVER
@@ -9,6 +10,7 @@ int currentNs = 0, currentNr = 1;       //Ns to be sent by emitter and Nr to be 
 int timeout_flag = 0, n_alarm = 0, first = 1, size_previous = 0;
 struct termios oldtio;
 byte previous_msg[MAX_DATA_D];
+int error = 1;
 
 void count(){
     timeout_flag = 1;
@@ -22,19 +24,31 @@ void deactivate_debug_d(void){
     DEBUG_MODE = 0;
 }
 
+void simulate_error(byte * buf){
+    if(error == ERRORP){
+        error = 1;
+        buf[0] = 0x23;
+        return;
+    }
+    error++;
+}
+
 
 enum MessageType ReceiveMessage(int fd, byte *received_message){
     int current_state = STATE_START;
     enum MessageType ret;
     byte buf[1];
-
+    
     while(current_state != STATE_STOP){
+        
+
         int ROBres = ReadOneByte(fd, buf);
         if(ROBres == -2){
             return TIME_OUT;
         }else if(ROBres == -1){
             return ERROR;
         }
+      
 
         if(current_state == STATE_START){
 
@@ -193,11 +207,14 @@ int ReceiveI(int fd, byte *result){
     int current_state = STATE_START;
     byte buf[1];
 
+ 
     while(current_state != STATE_STOP){
+      
 
         if(ReadOneByte(fd, buf)){
             return -1;
         }
+      
 
         if(current_state == STATE_START){
 
@@ -260,6 +277,7 @@ int ReceiveI(int fd, byte *result){
                 received_message[BCC1_POS] = buf[0];                
 
                 int ret = ReceiveIData(fd, received_message, result);
+                
                 if(ret == -1)
                     return -1;
 
@@ -283,6 +301,7 @@ int ReceiveIData(int fd, byte* received_message, byte *result){
     if(DEBUG_MODE) printf("Starting to receive data\n");
 
     ReadOneByte(fd, buf);
+    simulate_error(buf);
     while(buf[0] != FLAG){
         
         //Byte destuffing
@@ -737,6 +756,7 @@ int llwrite(int fd, byte* buffer, int length){
         if(ret == REJ){
             alarm(0);
             if(DEBUG_MODE) printf("Received REJ message.\n");
+            n_alarm = 0;
 
         }else if(ret == TIME_OUT){
             printf("Time_out occurred.\n");
@@ -751,7 +771,7 @@ int llwrite(int fd, byte* buffer, int length){
             
             alarm(0);
             if(DEBUG_MODE) printf("Received RR_REPEATED message. \n");
-
+            break;
         }
     }
    
@@ -759,6 +779,7 @@ int llwrite(int fd, byte* buffer, int length){
         printf("Couldn't establish connection.\n");
         return -1;
     }
+    n_alarm = 0;
     
     updateCurrentNs();
     updateEmitterNr();
@@ -771,7 +792,7 @@ int llread(int fd, byte* buffer){
     while(1){
         if(ret == -1){
             printf("Error in receiving message\n");
-            send_rej_message(fd);
+            send_rej_message(fd);   
             ret = ReceiveI(fd, buffer);
           
         }else if(ret == -2){
