@@ -519,7 +519,6 @@ void updateEmitterNr(){
 int llopen(char *port, int role){
     
     int fd = open_serialPort(port);
-    //\if(DEBUG_MODE) printf("Serial Port opened\n");
 
     if (set_costume_conf(fd) == -1)
         return -1;
@@ -787,14 +786,6 @@ int llread(int fd, byte* buffer){
         }else{
             if(DEBUG_MODE) printf("Received Message!\n");
             send_rr_message(fd);
-            /*
-            if(first == 1){
-                copy_arr(previous_msg, buffer);
-                size_previous = ret;
-                first = 0;
-            }else if(ret == size_previous && compare(previous_msg, buffer) == 0){                   // The message is repeted
-
-            }*/
             updateCurrentNr();
             updateReceiverNs();
             return ret;

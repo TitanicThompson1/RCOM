@@ -3,13 +3,16 @@
 
 #include "dataLinker.h"
 
+//Packet types
 #define DATA_PACK 0x01
 #define CONTROL_START 0x02
 #define CONTROL_END 0x03
 
+//File info
 #define FILE_NAME 0x01
 #define FILE_SIZE 0x00
 
+//Order bytes inside packets
 #define FIRST_BYTE(x) (x & 0xFF)
 #define SECOND_BYTE(x) (x >> 8 & 0xFF)
 #define THIRD_BYTE(x)  (x >> 16 & 0xFF)

@@ -20,11 +20,11 @@ int sendFile(char * filename, char *port){
 
     //getting file length
     struct stat buffer; 
-    if(fstat(fd, &buffer) != 0){         //int fstat(int fd, struct stat *buf);
+    if(fstat(fd, &buffer) != 0){         
         printf("Error on reading file information");
         return -1;
     }
-    fileLength = buffer.st_size;        //st_size;    /* total size, in bytes */
+    fileLength = buffer.st_size;
 
     //Send START control field
     if(sendControlPacket(CONTROL_START, fileLength, filename, fd) < 0){
@@ -57,10 +57,6 @@ int sendFile(char * filename, char *port){
 }
 
 int sendControlPacket(int controlType, unsigned int fileLength, char * filename, int fd){
-    //index 0: CONTROL_START ou CONTROL_END
-    //index 1: Type (0-> length of file, 1-> filename, ...)
-    //index 2: Length (tamanho do campo a passar e.g. tamanho do nome do fichero etc)
-    //index 3: Value (valor do campo a passar e.g. actual filename)
 
     byte controlPacket[MAX_DATA_D];
 
@@ -83,7 +79,7 @@ int sendControlPacket(int controlType, unsigned int fileLength, char * filename,
     controlPacket[i++] = SECOND_BYTE(fileLength);
     controlPacket[i++] = FIRST_BYTE(fileLength);
 
-    controlPacket[i++] = FILE_NAME;               //Sending filename
+    controlPacket[i++] = FILE_NAME;
     int size_filename = strlen(filename);
     
     if(size_filename + 9 > MAX_DATA_D){
@@ -122,7 +118,6 @@ int sendDataPackets(FILE *file, int fd){
     dataPacket[i++] = buf[0]; 
     
     while (1){
-        //Reading one byte per read
         
         ret = fread(buf, 1, 1, file);
         if(ret != 1) break;    
@@ -186,7 +181,6 @@ int receiveFile(char *port){
 }
 
 int readControlPacket(int fd, char* filename){
-    //going to call llread
 
     byte controlPacket[MAX_DATA_D];
     unsigned int size_filename;
@@ -198,7 +192,6 @@ int readControlPacket(int fd, char* filename){
         return -1;
     }
 
-    //checks for start control packet
     if(controlPacket[packetSize++] != CONTROL_START){
         printf("Error on reading Start Control Packet\n");
         return -1;    
@@ -206,10 +199,9 @@ int readControlPacket(int fd, char* filename){
   
 
     while(has_filename == 0 || has_filesize == 0){
-        //checks for type of info   
+  
         if(controlPacket[packetSize] == FILE_NAME){
             packetSize++;
-            //size of filename
             size_filename = controlPacket[packetSize++];
                 
             //reading filename
@@ -222,7 +214,7 @@ int readControlPacket(int fd, char* filename){
         }
         else if(controlPacket[packetSize] == FILE_SIZE){
             packetSize++;
-            int j = 0, n = controlPacket[packetSize++];     //n is the size of the V field
+            int j = 0, n = controlPacket[packetSize++];
             for(; j < n; j++){
                 size_file[j] = controlPacket[packetSize++];
             }

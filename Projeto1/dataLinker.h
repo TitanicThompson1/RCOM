@@ -254,6 +254,4 @@ int close_emitter(int fd);
  */
 int close_receiver(int fd);
 
-//int compare(byte *arr1, byte *arr2);
-
 #endif
