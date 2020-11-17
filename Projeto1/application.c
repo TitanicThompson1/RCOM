@@ -107,7 +107,7 @@ int sendDataPackets(FILE *file, int fd){
     dataPacket[0] = DATA_PACK;
     dataPacket[1] = sequenceNumber++;
     dataPacket[2] = SECOND_BYTE((MAX_DATA_D - 4));
-    dataPacket[3] = FIRST_BYTE((MAX_DATA_D - 4));                   
+    dataPacket[3] = FIRST_BYTE((MAX_DATA_D - 4));         
 
     byte buf[1];
     int ret = fread(buf, 1, 1, file), i = 4, size = 1;

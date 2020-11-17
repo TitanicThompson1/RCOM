@@ -1,2 +1,0 @@
-#define ERROR -1
-
