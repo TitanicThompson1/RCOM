@@ -1,20 +1,18 @@
-#ifndef PARSEURL_H
-#define PARSEURL_H
+#ifndef PARSER_H
+#define PARSER_H
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "ftp_data.h"
-
-
-
 
 /**
  * @brief Parses the url passed by user and puts it in a struct ftp_args
  * 
  * @param url the url to parse
  * @param parsed_args the resulting struct
- * @return int negative if any errors occured. 0 otherwise
+ * @return int negative if an error occured. 0 otherwise.
  */
 int parse_url(char* url, ftp_args* parsed_args);
 
@@ -23,7 +21,7 @@ int parse_url(char* url, ftp_args* parsed_args);
  * 
  * @param user_pass_host the user, path and host
  * @param parsed_args the struct with the above parts 
- * @return int negative if any errors occured. 0 otherwise
+ * @return int negative if an error occured. 0 otherwise.
  */
 int parse_uph(char* user_pass_host, ftp_args* parsed_args);
 
@@ -34,4 +32,13 @@ int parse_uph(char* user_pass_host, ftp_args* parsed_args);
  */
 void print_args(ftp_args arg);
 
-#endif  // PARSEURL_H
+/**
+ * @brief Parses the response from the server into the struct
+ * 
+ * @param response response from the server to be parsed
+ * @param formatted_response the response in the struct
+ * @return int negative if an error occured. 0 otherwise.
+ */
+int parse_server_response(char* response, ftp_server_res* formatted_response);
+
+#endif  // PARSER_H

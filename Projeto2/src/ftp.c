@@ -17,13 +17,15 @@ int ftp_transfer_file(ftp_args info){
     printf("Response: %s", response);
 
     // Authentication
-    authenticate_user(socketfd, info.user, info.pass);
+    if(authenticate_user(socketfd, info.user, info.pass)) return -1;
 
- 
+    // Enter passive mode
+
+    
+
     return 0;
 
 }
-
 
 
 int establish_TCP(char* ip){
@@ -53,27 +55,83 @@ int establish_TCP(char* ip){
 }
 
 int authenticate_user(int socketfd ,char* user, char* pass){
-    char user_command[USER_MAX_LENGTH + 10]; char pass_command[PASS_MAX_LENGTH + 10];
+    char user_command[USER_LEN + 10]; char pass_command[PASS_LEN + 10];
 
     // Formating the user and password commands
     sprintf(user_command,"user %s\n", user);
     sprintf(pass_command,"pass %s\n", pass);
 
     char user_response[SERVER_RES_LEN]; char pass_response[SERVER_RES_LEN];
+    ftp_server_res user_resp; ftp_server_res pass_resp;
 
     send_command(socketfd, user_command);
 
     receive_response(socketfd, user_response);
-    printf("Response User: %s", user_response);
+
+    if(parse_server_response(user_response, &user_resp)) return -1;
+    
+    int n_tries = 0;
+    if(strcmp(user, "anonymous") == 0){
+        
+        while(user_resp.code != 230 && n_tries < MAX_TRIES){            // Tries to send the command more times (MAX_TRIES)
+            n_tries++;
+
+            send_command(socketfd, user_command);
+
+            receive_response(socketfd, user_response);
+            if(parse_server_response(user_response, &user_resp)) return -1;
+        }
+
+        if(n_tries == MAX_TRIES){                                       // Exceed maximum number of tries
+            printf("Maximum tries exceded. Exiting\n");
+            return -1;
+        }
+
+        // Anonymous doesn't need the password
+        return 0;                                                       
+    }else {
+
+        while(user_resp.code != 331 && n_tries < MAX_TRIES){
+            n_tries++;
+
+            send_command(socketfd, user_command);
+
+            receive_response(socketfd, user_response);
+            if(parse_server_response(user_response, &user_resp)) return -1;
+        }
+
+        if(n_tries == MAX_TRIES){
+            printf("Maximum tries exceded. Exiting\n");
+            return -1;
+        }
+    }
+
 
     send_command(socketfd, pass_command);
 
     receive_response(socketfd, pass_response);
     printf("Response Pass: %s", pass_response);
 
+    if(parse_server_response(pass_response, &pass_resp)) return -1;
+
+    n_tries = 0;
+    while(pass_resp.code != 230 && n_tries < MAX_TRIES){
+        n_tries++;
+
+        send_command(socketfd, pass_command);
+
+        receive_response(socketfd, pass_response);
+
+        if(parse_server_response(pass_response, &pass_resp)) return -1;
+
+    }
+
+    if(n_tries == MAX_TRIES){
+        printf("Maximum tries exceded. Exiting\n");
+        return -1;
+    }
+
     return 0;
-
-
 }
 
 int send_command(int sockfd, char* command){

@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 
-#include "parseURL.h"
+#include "parser.h"
 #include "ftp.h"
 
 int main(int argc, char** argv){
@@ -19,7 +19,7 @@ int main(int argc, char** argv){
         return -1;
     }
 
-    print_args(arguments);
+    //print_args(arguments);
 
     if(ftp_transfer_file(arguments) != 0){
         printf("Error in transfering file\n");

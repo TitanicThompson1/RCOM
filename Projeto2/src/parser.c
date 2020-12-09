@@ -1,11 +1,11 @@
-#include "parseURL.h"
+#include "parser.h"
 
 
 int parse_url(char* url,  ftp_args* parsed_args){
     
     // getting the first part of url to discard it
     char* protocol = strtok(url, "//");
-    if(protocol == NULL || strcmp(protocol, "ftp:")){        
+    if(protocol == NULL || strcmp(protocol, "ftp:")){           
         printf("Wrong format of URL\n");
         return -1;
     }
@@ -50,7 +50,7 @@ int parse_uph(char* user_pass_host, ftp_args* parsed_args){
     }
 
     if(strcmp(user, all_phrase) == 0){          // no user (the ':' doesn't exists in the initial phrase)
-        strcpy(parsed_args->user, "anonymus");
+        strcpy(parsed_args->user, "anonymous");
         strcpy(parsed_args->pass, "");
         strcpy(parsed_args->host, user);
         
@@ -83,4 +83,27 @@ void print_args(ftp_args arg){
     printf("User: %s \t Pass: %s \t Host: %s \t Path: %s \n", arg.user, arg.pass, arg.host, arg.path);
 }
 
+
+int parse_server_response(char* response, ftp_server_res* formatted_response){
+    
+    // Getting code
+    char* code = strtok(response, " ");
+    if(code == NULL){           
+        printf("Wrong format of server response\n");
+        return -1;
+    }
+
+    // Getting description
+    char* description = strtok(NULL, "");
+    if(description == NULL){           
+        printf("Wrong format of server response\n");
+        return -1;
+    }
+
+    // Puting the code and description in struct
+    formatted_response->code = atoi(code);
+    strcpy(formatted_response->description, description);
+
+    return 0;
+}
 
