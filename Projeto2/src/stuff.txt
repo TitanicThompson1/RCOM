@@ -1,0 +1,38 @@
+Para repor as configurações de rede: updateimage (no terminal). Pode demorar um bocado.
+Para o Switch:
+    enable
+    8nortel
+
+Para o Router:
+    root
+    8nortel
+
+172.16.Y0.0/24
+Y0 -> Bancada
+24 -> Mascara rede
+
+Vai de 172.16.Y0.1  -> 172.16.Y0.254
+172.16.Y0.0 -> rede
+172.16.Y0.255 -> Broadcast
+
+
+MAC Address são 6 octetos, em que os primeiros 3 identificam o fabricante, e os ultimos 3 são o identificador de interface
+Ex: 78:D7:5F:1D:C7:06
+78:D7:5F -> Apple
+1D:C7:06 -> NIC 
+
+4 3 2 -> ordem dos pc
+
+Passos:
+1. Confirmar que estamos no PC3, abrir o terminal e executar o comando updateimage;
+2. Mudar para o PC4 através dos butões, abrir o terimnal e executar o comando updateimage;
+3. Quando acabar, desligar o cabo de rede;
+4. Consultar o IP através do ifconfig. Vamos usar a eth0;
+5. Mudar o ip através do ifconfig: ifconfig eth0 172.16.Y0.254/24;
+6. Verificar se o IP mudou (ifconfig);
+7. Mudar para o PC3 através dos butões;
+8. Consultar o IP e mudar o ip através do ifconfig: ifconfig eth0 172.16.Y0.1/24. Verificar se mudou;
+9. Fazer ping 172.16.Y0.254/24 para verificar se os dois PC estão ligados;
+10. Fazer route -n nos dois pc's para verificar que está direito
+11. Fazer arp -a nos dois pc's para ver se tem tables. Se tiver, fazer arp -d ipaddress.
+12. Abrir WireShark, fazer outra vez o ping (no tux1) durante uns segundos. Parar o Ping e guardar o log do WireShark.

@@ -2,11 +2,9 @@ Livros/
 *pdf
 *.sh
 *.o
-I/
-C/
-FER/
-TPROP/
 Valores.txt
 auth.txt
 la2.pdf
 howToAccess.txt
+RCOM-main
+
