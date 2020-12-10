@@ -4,31 +4,44 @@
 
 int ftp_transfer_file(ftp_args info){
 
-    char ip[63];
+    char ip[30];
     host_to_ip(info.host, ip);
-    printf("%s\n", ip);
+
     int socketfd;
-    if((socketfd = establish_TCP(ip)) < 0) return -1;
+    if((socketfd = establish_TCP(ip, FTP_PORT)) < 0) return -1;
 
     char response[SERVER_RES_LEN];
 
     // Welcome response
-    if(receive_response(socketfd, response)) return -1;
+    if(receive_response(socketfd, response)) {
+        close(socketfd);
+        return -1
+    };
     printf("Response: %s", response);
 
     // Authentication
-    if(authenticate_user(socketfd, info.user, info.pass)) return -1;
+    if(authenticate_user(socketfd, info.user, info.pass)) {
+        printf("Error in authentication\n");
+        return -1;
+    }
+    printf("Authentication succeded!\n");
 
     // Enter passive mode
+    int file_socket = enter_pasv_mode(socketfd);
+    if(file_socket < 0){
+        printf("Error entering passive mode\n");
+        return -1;
+    }
+    printf("Entered in passive mode!");
 
-    
+
 
     return 0;
 
 }
 
 
-int establish_TCP(char* ip){
+int establish_TCP(char* ip, int port){
 
 	int	sockfd;
 	struct	sockaddr_in server_addr;
@@ -37,7 +50,7 @@ int establish_TCP(char* ip){
 	bzero((char*)&server_addr,sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = inet_addr(ip);	//32 bit Internet address network byte ordered
-	server_addr.sin_port = htons(FTP_PORT);		    //server TCP port must be network byte ordered 
+	server_addr.sin_port = htons(port);		    //server TCP port must be network byte ordered 
     
 	//open an TCP socket
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -54,6 +67,7 @@ int establish_TCP(char* ip){
     return sockfd;
 }
 
+
 int authenticate_user(int socketfd ,char* user, char* pass){
     char user_command[USER_LEN + 10]; char pass_command[PASS_LEN + 10];
 
@@ -61,25 +75,22 @@ int authenticate_user(int socketfd ,char* user, char* pass){
     sprintf(user_command,"user %s\n", user);
     sprintf(pass_command,"pass %s\n", pass);
 
-    char user_response[SERVER_RES_LEN]; char pass_response[SERVER_RES_LEN];
     ftp_server_res user_resp; ftp_server_res pass_resp;
 
-    send_command(socketfd, user_command);
+    if(send_command(socketfd, user_command)) return -1;
 
-    receive_response(socketfd, user_response);
-
-    if(parse_server_response(user_response, &user_resp)) return -1;
+    if(receive_response_struct(socketfd, &user_resp)) return -1;
     
     int n_tries = 0;
     if(strcmp(user, "anonymous") == 0){
         
         while(user_resp.code != 230 && n_tries < MAX_TRIES){            // Tries to send the command more times (MAX_TRIES)
-            n_tries++;
+            printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+            sleep(1);
 
-            send_command(socketfd, user_command);
+            if(send_command(socketfd, user_command)) return -1;
 
-            receive_response(socketfd, user_response);
-            if(parse_server_response(user_response, &user_resp)) return -1;
+            if(receive_response_struct(socketfd, &user_resp)) return -1;
         }
 
         if(n_tries == MAX_TRIES){                                       // Exceed maximum number of tries
@@ -92,38 +103,63 @@ int authenticate_user(int socketfd ,char* user, char* pass){
     }else {
 
         while(user_resp.code != 331 && n_tries < MAX_TRIES){
-            n_tries++;
+            printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+            sleep(1);
 
-            send_command(socketfd, user_command);
+            if(send_command(socketfd, user_command)) return -1;
 
-            receive_response(socketfd, user_response);
-            if(parse_server_response(user_response, &user_resp)) return -1;
+            if(receive_response_struct(socketfd, &user_resp)) return -1;
         }
 
-        if(n_tries == MAX_TRIES){
+        if(n_tries == MAX_TRIES){                                       // Exceed maximum number of tries
             printf("Maximum tries exceded. Exiting\n");
             return -1;
         }
     }
 
 
-    send_command(socketfd, pass_command);
+    if(send_command(socketfd, pass_command)) return -1;
 
-    receive_response(socketfd, pass_response);
-    printf("Response Pass: %s", pass_response);
-
-    if(parse_server_response(pass_response, &pass_resp)) return -1;
+    if(receive_response_struct(socketfd, &pass_resp)) return -1;
 
     n_tries = 0;
     while(pass_resp.code != 230 && n_tries < MAX_TRIES){
-        n_tries++;
+        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+        sleep(1);
 
-        send_command(socketfd, pass_command);
+        if(send_command(socketfd, pass_command)) return -1;
 
-        receive_response(socketfd, pass_response);
+        if(receive_response_struct(socketfd, &pass_resp)) return -1;
 
-        if(parse_server_response(pass_response, &pass_resp)) return -1;
+    }
 
+    if(n_tries == MAX_TRIES){                                           // Exceed maximum number of tries
+        printf("Maximum tries exceded. Exiting\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int enter_pasv_mode(int socketfd){
+
+    // Sending command to enter passive mode
+    if(send_command(socketfd, "pasv \n")) return -1;
+
+
+    ftp_server_res pasv_resp;
+    if(receive_response_struct(socketfd, &pasv_resp)) return -1;
+
+    
+    int n_tries = 0;
+    while(pasv_resp.code != 227 && n_tries < MAX_TRIES){
+        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+        sleep(1);
+
+        if(send_command(socketfd, "pasv \n")) return -1;
+
+        if(receive_response_struct(socketfd, &pasv_resp)) return -1;
     }
 
     if(n_tries == MAX_TRIES){
@@ -131,8 +167,86 @@ int authenticate_user(int socketfd ,char* user, char* pass){
         return -1;
     }
 
-    return 0;
+    // Getting rid of the garbage
+    strtok(pasv_resp.description, "(");
+
+    // This gets only the part needed of the description
+    char *pre_formatted_ip = strtok(NULL, ")");
+
+    IP download_ip; int pre_port1, pre_port2;
+
+
+    // Parsing the string into the IP and ports
+    int ret = sscanf(pre_formatted_ip, "%d,%d,%d,%d,%d,%d", &download_ip.part1, &download_ip.part2, &download_ip.part3, &download_ip.part4, &pre_port1, &pre_port2);
+    if(ret == EOF){                             // Error control
+        printf("Error in sscanf\n");
+        return -1;
+    }
+
+    int port = pre_port1 * 256 + pre_port2;     // Needed to get the actual port
+
+    char ip[30];
+    ret = sprintf(ip, "%d.%d.%d.%d", download_ip.part1, download_ip.part2, download_ip.part3, download_ip.part4);
+    if(ret < 0){                                // Error control
+        printf("Error in sprintf\n");
+        return -1;
+    }
+
+    return establish_TCP(ip, port);
 }
+
+
+int retrieve_file(int socketfd, int file_socket, char* path){
+
+    char retr_cmmd[PATH_LEN + 10]; ftp_server_res retr_resp;
+    
+    sprintf(retr_cmmd, "retr %s\n", path);
+
+    // Sending retrieve command
+    if(send_command(socketfd, retr_cmmd)) return -1;
+
+    if(receive_response_struct(socketfd, &retr_resp)) return -1;
+
+    // TODO: Refactor
+    int n_tries = 0;
+    while(retr_resp.code != 150 && n_tries < MAX_TRIES){
+        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+        sleep(1);
+
+        if(send_command(socketfd, retr_cmmd)) return -1;
+
+        if(receive_response_struct(socketfd, &retr_resp)) return -1;
+    }
+
+    if(n_tries == MAX_TRIES){
+        printf("Maximum tries exceded. Exiting\n");
+        return -1;
+    }
+
+    char prog_path[1024];
+    if(getcwd(prog_path, sizeof(prog_path)) == NULL){
+        perror("getcwd");
+        return -1;
+    }
+
+    int filefd = open(prog_path, O_WRONLY | O_CREAT, 0644);
+    char buf[1]; int nread, nwrite;
+
+    do{
+        nread = read(file_socket, buf, 1);
+        if(nread == -1){
+            perror("read");
+            return -1;
+        }
+
+        nwrite = write(filefd, buf, 1);
+        if(nwrite == -1){
+            perror("write");
+            return -1;
+        }
+    }while(nread != 0)
+}
+
 
 int send_command(int sockfd, char* command){
     
@@ -166,6 +280,16 @@ int receive_response(int sockfd, char* response){
         response[i++] = buf[0];
     }
     response[i] = '\0';
+
+    return 0;
+}
+
+
+int receive_response_struct(int sockfd, ftp_server_res* response){
+    char resp[SERVER_RES_LEN];
+    if(receive_response(sockfd, resp)) return -1;
+
+    if(parse_server_response(resp, response)) return -1;
 
     return 0;
 }
