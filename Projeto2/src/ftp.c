@@ -222,7 +222,7 @@ int retrieve_file(int socketfd, int file_socket, char* path){
 
     char retr_cmmd[PATH_LEN + 10]; ftp_server_res retr_resp;
     
-    printf("%s\n", path);
+    
     sprintf(retr_cmmd, "retr %s\n", path);
 
     // Sending retrieve command
@@ -248,7 +248,6 @@ int retrieve_file(int socketfd, int file_socket, char* path){
 
     char filename[FILENAME_LEN];
     if(get_filename(path, filename)) return -1;
-    printf("%s\n", filename);
 
     int filefd = open(filename, O_WRONLY | O_CREAT, 0644);
     if(filefd == -1){
@@ -348,7 +347,6 @@ int receive_response(int sockfd, char* response){
 int receive_response_struct(int sockfd, ftp_server_res* response){
     char resp[SERVER_RES_LEN];
     if(receive_response(sockfd, resp)) return -1;
-    printf("%s", resp);
     if(parse_server_response(resp, response)) return -1;
 
     return 0;
