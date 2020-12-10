@@ -66,7 +66,7 @@ int ftp_transfer_file(ftp_args info){
 int establish_TCP(char* ip, int port){
 
 	int	sockfd;
-	struct	sockaddr_in server_addr;
+	struct sockaddr_in server_addr;
 
 	//server address handling
 	bzero((char*)&server_addr,sizeof(server_addr));
@@ -79,13 +79,14 @@ int establish_TCP(char* ip, int port){
         perror("socket()");
         return -1;
     }
-	
+
     //connect to the server
     if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
         perror("connect()");
         return -1;
     }
 
+    printf("OI\n");
     return sockfd;
 }
 
@@ -347,6 +348,9 @@ int receive_response(int sockfd, char* response){
 int receive_response_struct(int sockfd, ftp_server_res* response){
     char resp[SERVER_RES_LEN];
     if(receive_response(sockfd, resp)) return -1;
+    
+    printf("%s\n", resp);
+    
     if(parse_server_response(resp, response)) return -1;
 
     return 0;
