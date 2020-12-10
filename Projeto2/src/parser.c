@@ -28,7 +28,7 @@ int parse_url(char* url,  ftp_args* parsed_args){
     // parsing the user, password and host
     if(parse_uph(user_pass_host, parsed_args) != 0) return -1;
 
-    //the path is only the remaing
+    // storing the path
     strcpy(parsed_args->path, path);
 
     return 0;
@@ -81,6 +81,29 @@ int parse_uph(char* user_pass_host, ftp_args* parsed_args){
 
 void print_args(ftp_args arg){
     printf("User: %s \t Pass: %s \t Host: %s \t Path: %s \n", arg.user, arg.pass, arg.host, arg.path);
+}
+
+int get_filename(char* path, char* filename){
+    
+    char *part_of_path = malloc(255);
+    part_of_path = strtok(path, "/");
+    if(part_of_path == NULL){
+        printf("Wrong format of URL\n");
+        free(part_of_path);
+        return -1;
+    }
+
+    do{
+        //copies the previous parte of path to filename
+        strcpy(filename, part_of_path);
+
+        //gets the next path
+        part_of_path = strtok(NULL, "/");
+    }while(part_of_path != NULL);
+
+    free(part_of_path);
+
+    return 0;
 }
 
 

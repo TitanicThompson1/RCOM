@@ -33,6 +33,15 @@ int parse_uph(char* user_pass_host, ftp_args* parsed_args);
 void print_args(ftp_args arg);
 
 /**
+ * @brief Parses the path string to get the filename (that is the last piece, after the last '/')
+ * 
+ * @param path the path to the file
+ * @param filename the filename
+ * @return int negative if an error occured. 0 otherwise.
+ */
+int get_filename(char* path, char* filename);
+
+/**
  * @brief Parses the response from the server into the struct
  * 
  * @param response response from the server to be parsed

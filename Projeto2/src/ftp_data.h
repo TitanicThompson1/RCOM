@@ -9,7 +9,7 @@
 
 #define DESCR_LEN 127
 
-#include <stdint.h>
+#define FILENAME_LEN 63
 
 /**
  * @brief Struct with the arguments necessary to FTP protocol (from the URL)

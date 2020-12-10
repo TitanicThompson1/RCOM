@@ -48,6 +48,24 @@ int authenticate_user(int socketfd ,char* user, char* pass);
 int enter_pasv_mode(int socketfd);
 
 /**
+ * @brief Retrieves file from server.
+ * 
+ * @param socketfd the connection socket file descriptor.
+ * @param file_socket the socket file descriptor to retrieve the file .
+ * @param path path of file within the server.
+ * @return int negative if an error occured. 0 otherwise.
+ */
+int retrieve_file(int socketfd, int file_socket, char* path);
+
+/**
+ * @brief Closes the TCP connection with quit command
+ * 
+ * @param socketfd the connection socket file descriptor.
+ * @return int negative if an error occured. 0 otherwise.
+ */
+int closes_TCP(int socketfd);
+
+/**
  * @brief Sends a command to the server.
  * 
  * @param sockfd the socket file descriptor.

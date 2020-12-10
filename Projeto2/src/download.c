@@ -19,8 +19,6 @@ int main(int argc, char** argv){
         return -1;
     }
 
-    //print_args(arguments);
-
     if(ftp_transfer_file(arguments) != 0){
         printf("Error in transfering file\n");
         return -1;
