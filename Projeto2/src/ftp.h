@@ -17,6 +17,12 @@
 #define FTP_PORT 21
 #define MAX_TRIES 3
 
+/**
+ * @brief This function donwloads a file following the FTP. 
+ * 
+ * @param info the information needed for FTP (user, pass, host and path)
+ * @return int negative if an error occured. 0 otherwise.
+ */
 int ftp_transfer_file(ftp_args info);
 
 /**

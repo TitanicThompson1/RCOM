@@ -14,14 +14,14 @@ int main(int argc, char** argv){
 
     ftp_args arguments;
     
+    // Parsing the argument received by user 
     if(parse_url(argv[1], &arguments) != 0){
         printf("Usage: download ftp://[<user>:<password>@]<host>/<url-path>\n");
         return -1;
     }
     printf("Parsed arguments!\n");
 
-    //print_args(arguments);
-
+    // Transfering the pretended file
     if(ftp_transfer_file(arguments) != 0){
         printf("Error in transfering file\n");
         return -1;
@@ -30,5 +30,4 @@ int main(int argc, char** argv){
     printf("File transfered!\n");
 
     return 0;
-
 }
