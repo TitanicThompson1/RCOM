@@ -1,6 +1,5 @@
 Livros/
 *pdf
-*.sh
 *.o
 Valores.txt
 auth.txt
