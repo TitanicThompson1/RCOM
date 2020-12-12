@@ -20,7 +20,7 @@ int main(int argc, char** argv){
     }
     printf("Parsed arguments!\n");
 
-    print_args(arguments);
+    //print_args(arguments);
 
     if(ftp_transfer_file(arguments) != 0){
         printf("Error in transfering file\n");

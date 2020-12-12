@@ -86,7 +86,6 @@ int establish_TCP(char* ip, int port){
         return -1;
     }
 
-    printf("OI\n");
     return sockfd;
 }
 
@@ -103,51 +102,37 @@ int authenticate_user(int socketfd ,char* user, char* pass){
     if(send_command(socketfd, user_command)) return -1;
 
     if(receive_response_struct(socketfd, &user_resp)) return -1;
+ 
+        
+    // Cleaning up the welcome messages
+    while(user_resp.code == 220)
+        if(receive_response_struct(socketfd, &user_resp)) return -1;
+
+
+    // Log in done; there was no need for password
+    if(user_resp.code == 230) return 0;
     
     int n_tries = 0;
-    if(strcmp(user, "anonymous") == 0){
-        
-        while(user_resp.code != 230 && n_tries < MAX_TRIES){            // Tries to send the command more times (MAX_TRIES)
-            printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
-            sleep(1);
+    while(user_resp.code != 331 && n_tries < MAX_TRIES){        // Didn't received the "Need password" response
+        printf("Unexpected response from server. Trying again in 1 sec\n"); n_tries++;
+        sleep(1);
 
-            if(send_command(socketfd, user_command)) return -1;
+        if(send_command(socketfd, user_command)) return -1;
 
-            if(receive_response_struct(socketfd, &user_resp)) return -1;
-        }
-
-        if(n_tries == MAX_TRIES){                                       // Exceed maximum number of tries
-            printf("Maximum tries exceded. Exiting\n");
-            return -1;
-        }
-
-        // Anonymous doesn't need the password
-        return 0;                                                       
-    }else {
-
-        while(user_resp.code != 331 && n_tries < MAX_TRIES){
-            printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
-            sleep(1);
-
-            if(send_command(socketfd, user_command)) return -1;
-
-            if(receive_response_struct(socketfd, &user_resp)) return -1;
-        }
-
-        if(n_tries == MAX_TRIES){                                       // Exceed maximum number of tries
-            printf("Maximum tries exceded. Exiting\n");
-            return -1;
-        }
+        if(receive_response_struct(socketfd, &user_resp)) return -1;
     }
 
-
+                                           
+    // Sends the password
     if(send_command(socketfd, pass_command)) return -1;
 
+    // Receives the response of password command
     if(receive_response_struct(socketfd, &pass_resp)) return -1;
 
+
     n_tries = 0;
-    while(pass_resp.code != 230 && n_tries < MAX_TRIES){
-        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+    while(pass_resp.code != 230 && n_tries < MAX_TRIES){        // Didn't received the "Login successful" response
+        printf("Unexpected response from server. Trying again in 1 sec\n"); n_tries++;
         sleep(1);
 
         if(send_command(socketfd, pass_command)) return -1;
@@ -156,7 +141,7 @@ int authenticate_user(int socketfd ,char* user, char* pass){
 
     }
 
-    if(n_tries == MAX_TRIES){                                           // Exceed maximum number of tries
+    if(n_tries == MAX_TRIES){                                   // Exceed maximum number of tries
         printf("Maximum tries exceded. Exiting\n");
         return -1;
     }
@@ -177,7 +162,7 @@ int enter_pasv_mode(int socketfd){
     
     int n_tries = 0;
     while(pasv_resp.code != 227 && n_tries < MAX_TRIES){
-        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+        printf("Unexpected response from server. Trying again in 1 sec\n"); n_tries++;
         sleep(1);
 
         if(send_command(socketfd, "pasv \n")) return -1;
@@ -234,7 +219,7 @@ int retrieve_file(int socketfd, int file_socket, char* path){
 
     int n_tries = 0;
     while(retr_resp.code != 150 && n_tries < MAX_TRIES){
-        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+        printf("Unexpected response from server. Trying again in 1 sec\n"); n_tries++;
         sleep(1);
 
         if(send_command(socketfd, retr_cmmd)) return -1;
@@ -290,7 +275,7 @@ int closes_TCP(int socketfd){
 
     int n_tries = 0;
     while(quit_resp.code != 221 && n_tries < MAX_TRIES){            // Tries to send the command more times (MAX_TRIES)
-        printf("Unable to contact server. Trying again in 1 sec\n"); n_tries++;
+        printf("Unexpected response from server. Trying again in 1 sec\n"); n_tries++;
         sleep(1);
 
         if(send_command(socketfd, "quit \n")) return -1;
@@ -346,12 +331,14 @@ int receive_response(int sockfd, char* response){
 
 
 int receive_response_struct(int sockfd, ftp_server_res* response){
+
     char resp[SERVER_RES_LEN];
+
     if(receive_response(sockfd, resp)) return -1;
     
-    printf("%s\n", resp);
+    //printf("String received by server: %s\n", resp);
     
-    if(parse_server_response(resp, response)) return -1;
+    if(parse_server_response(resp, response, " ") != 0 && parse_server_response(resp, response, "-") != 0) return -1;
 
     return 0;
 }

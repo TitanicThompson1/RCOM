@@ -15,7 +15,6 @@
 
 
 #define FTP_PORT 21
-#define SERVER_RES_LEN 127
 #define MAX_TRIES 3
 
 int ftp_transfer_file(ftp_args info);

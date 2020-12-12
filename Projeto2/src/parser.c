@@ -1,10 +1,20 @@
 #include "parser.h"
 
 
-int parse_url(char* url,  ftp_args* parsed_args){
+int parse_url(const char* url,  ftp_args* parsed_args){
+
+    char url_cpy[ARGS_LEN];
+
+    // Making a copy of url string
+    char *res = strcpy(url_cpy, url);
+    if(res == NULL){
+        printf("Error in strcpy\n");
+        return -1;
+    }
+
     
     // getting the first part of url to discard it
-    char* protocol = strtok(url, "//");
+    char* protocol = strtok(url_cpy, "//");
     if(protocol == NULL || strcmp(protocol, "ftp:")){           
         printf("Wrong format of URL\n");
         return -1;
@@ -78,10 +88,10 @@ int parse_uph(char* user_pass_host, ftp_args* parsed_args){
 }
 
 
-
 void print_args(ftp_args arg){
     printf("User: %s \t Pass: %s \t Host: %s \t Path: %s \n", arg.user, arg.pass, arg.host, arg.path);
 }
+
 
 int get_filename(char* path, char* filename){
     
@@ -107,10 +117,19 @@ int get_filename(char* path, char* filename){
 }
 
 
-int parse_server_response(char* response, ftp_server_res* formatted_response){
+int parse_server_response(const char* response, ftp_server_res* formatted_response, const char* del){
     
+    char response_cpy[SERVER_RES_LEN];
+
+    // Making a copy of response string
+    char *res = strcpy(response_cpy, response);
+    if(res == NULL){
+        printf("Error in strcpy\n");
+        return -1;
+    }
+
     // Getting code
-    char* code = strtok(response, " ");
+    char* code = strtok(response_cpy, del);
     if(code == NULL){           
         printf("Wrong format of server response\n");
         return -1;
@@ -119,8 +138,7 @@ int parse_server_response(char* response, ftp_server_res* formatted_response){
     // Getting description
     char* description = strtok(NULL, "");
     if(description == NULL){           
-        printf("Wrong format of server response\n");
-        return -1;
+        description = "No descripiton";
     }
 
     // Puting the code and description in struct

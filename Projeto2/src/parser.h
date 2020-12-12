@@ -14,7 +14,7 @@
  * @param parsed_args the resulting struct
  * @return int negative if an error occured. 0 otherwise.
  */
-int parse_url(char* url, ftp_args* parsed_args);
+int parse_url(const char* url, ftp_args* parsed_args);
 
 /**
  * @brief Parses the user path and host part of the url and puts it in the struct
@@ -46,8 +46,9 @@ int get_filename(char* path, char* filename);
  * 
  * @param response response from the server to be parsed
  * @param formatted_response the response in the struct
+ * @param del delimiter used by server
  * @return int negative if an error occured. 0 otherwise.
  */
-int parse_server_response(char* response, ftp_server_res* formatted_response);
+int parse_server_response(const char* response, ftp_server_res* formatted_response, const char* del);
 
 #endif  // PARSER_H

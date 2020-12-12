@@ -11,6 +11,9 @@
 
 #define FILENAME_LEN 63
 
+#define SERVER_RES_LEN 255
+#define ARGS_LEN 255
+
 /**
  * @brief Struct with the arguments necessary to FTP protocol (from the URL)
  * 
